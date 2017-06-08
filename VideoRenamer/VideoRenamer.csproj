@@ -53,19 +53,10 @@
     <Compile Include="VideoRenamer.Designer.cs">
       <DependentUpon>VideoRenamer.cs</DependentUpon>
     </Compile>
-    <Compile Include="VideoRenamer_OLD.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="VideoRenamer_OLD.Designer.cs">
-      <DependentUpon>VideoRenamer_OLD.cs</DependentUpon>
-    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="VideoRenamer.resx">
       <DependentUpon>VideoRenamer.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="VideoRenamer_OLD.resx">
-      <DependentUpon>VideoRenamer_OLD.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

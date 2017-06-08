@@ -461,7 +461,6 @@ namespace VideoRenamer
                     var original = Path.GetFileName(name);
                     var tmpFile = Path.GetFileNameWithoutExtension(name);
                     var ext = Path.GetExtension(name);
-                    //var patern = new[]{"44"};
                     var index = ++i;
                     if (tmpFile != null)
                     {
@@ -504,7 +503,17 @@ namespace VideoRenamer
                             var mc = fMatch.Value;
                             format = Regex.Replace(format, mc, mc.ToLower());
                             tmpFile = tmpFile.Substring(format.Length);
-                            tmpFile = tmpFile.StartsWith("-") ? tmpFile.Substring(1) : tmpFile;
+                            var startwith = @"";
+                            if (tmpFile.StartsWith("-"))
+                            {
+                                startwith = @"-";
+                                tmpFile = tmpFile.Substring(1);
+                            }
+                            else if (tmpFile.StartsWith("."))
+                            {
+                                startwith = @".";
+                                tmpFile = tmpFile.Substring(1);
+                            }
                             group = SercheMatch(tmpFile, groupRegex.ToString());
                             var gDict = groupList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
                             group = Regex.Replace(group, @"[^\>]*", x =>
@@ -514,7 +523,7 @@ namespace VideoRenamer
                                 gDict.TryGetValue(tmp, out replace);
                                 return replace ?? tmp;
                             });
-                            newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + sEep + "." + format + group + ext;
+                            newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + sEep + "." + format + startwith + group + ext;
 
                         }
                         else if (threeRegex.IsMatch(tmpFile))
@@ -552,7 +561,17 @@ namespace VideoRenamer
                             var mc = fMatch.Value;
                             format = Regex.Replace(format, mc, mc.ToLower());
                             tmpFile = tmpFile.Substring(format.Length);
-                            tmpFile = tmpFile.StartsWith("-") ? tmpFile.Substring(1) : tmpFile;
+                            var startwith = @"";
+                            if (tmpFile.StartsWith("-"))
+                            {
+                                startwith = @"-";
+                                tmpFile = tmpFile.Substring(1);
+                            }
+                            else if (tmpFile.StartsWith("."))
+                            {
+                                startwith = @".";
+                                tmpFile = tmpFile.Substring(1);
+                            }
                             group = SercheMatch(tmpFile, groupRegex.ToString());
                             var gDict = groupList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
                             group = Regex.Replace(group, @"[^\>]*", x =>
@@ -562,7 +581,7 @@ namespace VideoRenamer
                                 gDict.TryGetValue(tmp, out replace);
                                 return replace ?? tmp;
                             });
-                            newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + year + sEep + format + group + ext;
+                            newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + year + sEep + format + startwith + group + ext;
                             //newName = patern.Aggregate(newName, (current, item) => formatRegex.Replace(current, item));
                         }
                         else if (fourRegex.IsMatch(tmpFile))
@@ -600,7 +619,17 @@ namespace VideoRenamer
                             var mc = fMatch.Value;
                             format = Regex.Replace(format, mc, mc.ToLower());
                             tmpFile = tmpFile.Substring(format.Length);
-                            tmpFile = tmpFile.StartsWith("-") ? tmpFile.Substring(1) : tmpFile;
+                            var startwith = @"";
+                            if (tmpFile.StartsWith("-"))
+                            {
+                                startwith = @"-";
+                                tmpFile = tmpFile.Substring(1);
+                            }
+                            else if (tmpFile.StartsWith("."))
+                            {
+                                startwith = @".";
+                                tmpFile = tmpFile.Substring(1);
+                            }
                             group = SercheMatch(tmpFile, groupRegex.ToString());
                             var gDict = groupList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
                             group = Regex.Replace(group, @"[^\>]*", x =>
@@ -611,12 +640,11 @@ namespace VideoRenamer
                                 return replace ?? tmp;
                             });
 
-                            newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + year + sEep + format + group + ext;
+                            newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + year + sEep + format + startwith + group + ext;
 
                         }
                         else
                         {
-                           
                             var filename = ""; const string sEepPattern = @"[s][0-9]{2}[e][0-9]{2}";
                             var sEepMatch = Regex.Match(tmpFile, sEepPattern);
                             var sEep = sEepMatch.Value;
@@ -648,7 +676,19 @@ namespace VideoRenamer
                             var mc = fMatch.Value;
                             format = Regex.Replace(format, mc, mc.ToLower());
                             tmpFile = tmpFile.Substring(format.Length);
-                            tmpFile = tmpFile.StartsWith("-") ? tmpFile.Substring(1) : tmpFile;
+                            var startwith = @"";
+                            if (tmpFile.StartsWith("-"))
+                            {
+                                startwith = @"-";
+                                tmpFile = tmpFile.Substring(1);
+                            }
+                            else if (tmpFile.StartsWith("."))
+                            {
+                                startwith = @".";
+                                tmpFile = tmpFile.Substring(1);
+                            }
+
+                        
                             group = SercheMatch(tmpFile, groupRegex.ToString());
                             var gDict = groupList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
                             group = Regex.Replace(group, @"[^\>]*", x =>
@@ -658,7 +698,7 @@ namespace VideoRenamer
                                 gDict.TryGetValue(tmp, out replace);
                                 return replace ?? tmp;
                             });
-                            newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + sEep + format + group + ext;
+                            newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + sEep + format + startwith +group + ext;
                         }
                     }
 

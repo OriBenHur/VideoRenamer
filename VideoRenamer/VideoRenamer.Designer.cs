@@ -51,6 +51,7 @@
             this.listView.Size = new System.Drawing.Size(617, 346);
             this.listView.TabIndex = 0;
             this.listView.UseCompatibleStateImageBehavior = false;
+            this.listView.ItemChecked += new System.Windows.Forms.ItemCheckedEventHandler(this.listView_ItemChecked);
             this.listView.Resize += new System.EventHandler(this.listView_Resize);
             // 
             // menuStrip1

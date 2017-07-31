@@ -46,6 +46,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="FolderSelectDialog.cs" />
+    <Compile Include="Matches.cs" />
     <Compile Include="Reflector.cs" />
     <Compile Include="VideoRenamer.cs">
       <SubType>Form</SubType>

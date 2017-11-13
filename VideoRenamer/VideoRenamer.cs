@@ -5,7 +5,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Windows.Forms;
 using System.Xml.Linq;
 
@@ -30,45 +29,6 @@ namespace VideoRenamer
             listView.CheckBoxes = true;
         }
 
-        private void NewVersion(bool isLoad)
-        {
-            var downloadUrl = @"";
-            Version newVersion = null;
-            var xmlUrl = @"https://onedrive.live.com/download?cid=D9DE3B3ACC374428&resid=D9DE3B3ACC374428%217999&authkey=ADJwQu1VOTfAOVg";
-            Version appVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-            var appName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
-            var doc = XDocument.Load(xmlUrl);
-            try
-            {
-                foreach (var dm in doc.Descendants(appName))
-                {
-                    var versionElement = dm.Element(@"version");
-                    if (versionElement == null) continue;
-                    var urlelEment = dm.Element(@"url");
-                    if (urlelEment == null) continue;
-                    newVersion = new Version(versionElement.Value);
-                    downloadUrl = urlelEment.Value;
-
-                }
-            }
-            catch (Exception exception)
-            {
-                MessageBox.Show(exception.Message);
-            }
-
-            if (appVersion.CompareTo(newVersion) < 0)
-            {
-                var result = MessageBox.Show(
-                    $@"{appName} v.{newVersion} is out!{Environment.NewLine}Would You Like To Donwload It?", @"New Version is avlibale", MessageBoxButtons.YesNo);
-                if (result == DialogResult.Yes)
-                    System.Diagnostics.Process.Start(downloadUrl);
-            }
-            else
-            {
-                if (!isLoad)
-                    MessageBox.Show(@"You Are Running The Last Version.", @"No New Updates");
-            }
-        }
         private void SizeLastColumn(ListView listview)
         {
             var width = listView.Size.Width - 52;
@@ -188,7 +148,7 @@ namespace VideoRenamer
                 string format;
                 string group;
                 tmpFile = tmpFile.EndsWith(".") ? tmpFile.Substring(0, tmpFile.Length - 1) : tmpFile;
-                
+
                 if (Matches.SpRegex.IsMatch(tmpFile)) newName = original;
                 else if (Matches.SXregex.IsMatch(tmpFile))
                 {
@@ -474,10 +434,10 @@ namespace VideoRenamer
                 var match = Regex.Match(newName, "(X|H)?(264|265)");
                 var ma = match.Value;
                 newName = Regex.Replace(newName, ma, ma.ToLower());
-                 if (newName.Contains("HDTV") && !newName.Contains("XviD") && !Regex.IsMatch(newName,"([xX]|[hH])?(264|265)"))
-                newName = newName.Replace("HDTV", "HDTV.x264");
+                if (newName.Contains("HDTV") && !newName.Contains("XviD") && !Regex.IsMatch(newName, "([xX]|[hH])?(264|265)"))
+                    newName = newName.Replace("HDTV", "HDTV.x264");
             }
-           
+
             return newName;
         }
         private void ProccessName(string name)
@@ -511,18 +471,12 @@ namespace VideoRenamer
 
         private void VideoRenamer_Shown(object sender, EventArgs e)
         {
-            void Action()
-            {
-                NewVersion(true);
-            }
-
-            var thread = new Thread(Action) { IsBackground = true };
-            thread.Start();
+            CheckForUpdates.RunWorkerAsync(true);
         }
 
         private void checkForUpdatesToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            NewVersion(false);
+            CheckForUpdates.RunWorkerAsync(false);
         }
 
         private void All_checkBox_CheckedChanged(object sender, EventArgs e)
@@ -579,7 +533,7 @@ namespace VideoRenamer
             if (_list.Count > 0)
             {
                 errors = _list.Aggregate(errors, (current, err) => current + err + Environment.NewLine);
-                MessageBox.Show(@"Done But with Errors." + Environment.NewLine +  @"The Following Couldn't Be Renamed:" + Environment.NewLine + errors, @"Done");
+                MessageBox.Show(@"Done But with Errors." + Environment.NewLine + @"The Following Couldn't Be Renamed:" + Environment.NewLine + errors, @"Done");
             }
 
             else MessageBox.Show(@"Done.", @"Done");
@@ -590,29 +544,69 @@ namespace VideoRenamer
         {
             //if (listView.FocusedItem != null)
             //{
-                foreach (ListViewItem item in listView.Items)
+            foreach (ListViewItem item in listView.Items)
+            {
+                if (item.Checked)
                 {
-                    if (item.Checked)
+                    item.SubItems[3].Text = ProccessNewName(item.SubItems[2].Text);
+                    if (!item.SubItems[2].Text.Equals(item.SubItems[3].Text))
                     {
-                        item.SubItems[3].Text = ProccessNewName(item.SubItems[2].Text);
-                        if (!item.SubItems[2].Text.Equals(item.SubItems[3].Text))
-                        {
-                            item.UseItemStyleForSubItems = false;
-                            item.SubItems[3].ForeColor = Color.Red;
-                        }
-                        else
-                        {
-                            item.UseItemStyleForSubItems = false;
-                            item.SubItems[3].ForeColor = Color.Black;
-                        }
+                        item.UseItemStyleForSubItems = false;
+                        item.SubItems[3].ForeColor = Color.Red;
                     }
-
                     else
                     {
-                        item.SubItems[3].Text = "";
+                        item.UseItemStyleForSubItems = false;
+                        item.SubItems[3].ForeColor = Color.Black;
                     }
                 }
+
+                else
+                {
+                    item.SubItems[3].Text = "";
+                }
+            }
             //}
+        }
+
+        private void CheckForUpdates_DoWork(object sender, System.ComponentModel.DoWorkEventArgs e)
+        {
+            var downloadUrl = @"";
+            Version newVersion = null;
+            var xmlUrl = @"https://oribenhur.github.io/update.xml";
+            Version appVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            var appName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
+            var doc = XDocument.Load(xmlUrl);
+            try
+            {
+                foreach (var dm in doc.Descendants(appName))
+                {
+                    var versionElement = dm.Element(@"version");
+                    if (versionElement == null) continue;
+                    var urlelEment = dm.Element(@"url");
+                    if (urlelEment == null) continue;
+                    newVersion = new Version(versionElement.Value);
+                    downloadUrl = urlelEment.Value;
+
+                }
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(exception.Message);
+            }
+
+            if (appVersion.CompareTo(newVersion) < 0)
+            {
+                var result = MessageBox.Show(
+                    $@"{appName} v.{newVersion} is out!{Environment.NewLine}Would You Like To Donwload It?", @"New Version is avlibale", MessageBoxButtons.YesNo);
+                if (result == DialogResult.Yes)
+                    System.Diagnostics.Process.Start(downloadUrl);
+            }
+            else
+            {
+                if (!(bool)e.Argument)
+                    MessageBox.Show(@"You Are Running The Last Version.", @"No New Updates");
+            }
         }
     }
 }

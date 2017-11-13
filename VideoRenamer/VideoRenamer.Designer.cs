@@ -38,6 +38,7 @@
             this.checkForUpdatesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.All_checkBox = new System.Windows.Forms.CheckBox();
             this.Rename_button = new System.Windows.Forms.Button();
+            this.CheckForUpdates = new System.ComponentModel.BackgroundWorker();
             this.menuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -136,6 +137,10 @@
             this.Rename_button.UseVisualStyleBackColor = true;
             this.Rename_button.Click += new System.EventHandler(this.Rename_button_Click);
             // 
+            // CheckForUpdates
+            // 
+            this.CheckForUpdates.DoWork += new System.ComponentModel.DoWorkEventHandler(this.CheckForUpdates_DoWork);
+            // 
             // VideoRenamer
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -169,6 +174,7 @@
         private System.Windows.Forms.CheckBox All_checkBox;
         private System.Windows.Forms.ToolStripMenuItem checkForUpdatesToolStripMenuItem;
         private System.Windows.Forms.Button Rename_button;
+        private System.ComponentModel.BackgroundWorker CheckForUpdates;
     }
 }
 

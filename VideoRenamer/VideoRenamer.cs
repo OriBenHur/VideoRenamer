@@ -453,7 +453,7 @@ namespace VideoRenamer
                         var token = JObject.Parse(deserializeObjectJson.ToString());
                         epName = token.SelectToken("name").Value<string>().Replace(' ', '.');
                     }
-                    newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + year + sEep + epName + '.' + format + startwith + group + ext;
+                    newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + year + sEep + epName + format + startwith + group + ext;
 
                 }
                 else if (Matches.MorethenfourRegex.IsMatch(tmpFile))

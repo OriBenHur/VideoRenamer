@@ -391,8 +391,9 @@ namespace VideoRenamer
         public static readonly Regex FormatRegex =
             new Regex(
                 @"\b((?i)CAMRip|CAM|TS|TELESYNC|PDVD|PTVD|PPVRip|SCR|SCREENER|DVDSCR|DVDSCREENER|BDSCR|R4|R5|R5LINE|R5.LINE|DVD|DVD5|DVD9|DVDRip|DVDR|TVRip|DSR|PDTV|SDTV|HDTV|HDTVRip|DVB|DVBRip|DTHRip|VODRip|VODR|BDRip|BRRip|BR.Rip|BluRay|Blu.Ray|BD|BDR|BD25|BD50|3D.BluRay|3DBluRay|3DBD|Remux|BDRemux|BR.Scr|BR.Screener|HDDVD|HDRip|WorkPrint|VHS|VCD|TELECINE|WEBRip|WEB.Rip|WEBDL|WEB.DL|WEBCap|WEB.Cap|WEB|ithd|iTunesHD|Laserdisc|AmazonHD|NetflixHD|NetflixUHD|VHSRip|LaserRip|URip|UnknownRip|MicroHD|WP|TC|PPV|DDC|R5.AC3.5.1.HQ|DVD-Full|DVDFull|Full-Rip|FullRip|DSRip|SATRip|BD5|BD9|Extended|Uncensored|Remastered|Unrated|Uncut|IMAX|(Ultimate.)?(Director.?s|Theatrical|Ultimate|Final|Rogue|Collectors|Special|Despecialized).(Cut|Edition|Version)|((H|HALF|F|FULL)[^\\p{Alnum}]{0,2})?(SBS|TAB|OU)|DivX|Xvid|AVC|([xX]|[hH])[.]?(264|265)|HEVC|3ivx|PGS|MP[E]?G[45]?|MP[34]|(FLAC|AAC|AC3|DD|MA).?[2457][.]?[01]|[26]ch|(Multi.)?DTS(.HD)?(.MA)?|FLAC|AAC|AC3|TrueHD|Atmos|[M0]?(420|480|720|1080|1440|2160)[pi]|(?<=[-.])(420|480|720|1080|2D|3D)|10.?bit|(24|30|60)FPS|Hi10[P]?|[a-z]{2,3}.(2[.]0|5[.]1)|(19|20)[0-9]+(.)S[0-9]+(?!(.)?E[0-9]+)|(?<=\\d+)v[0-4]|CD\\d+|3D|2D|PROPER|LIMITED|1gb|REPACK(?i))\b");
-        public static readonly Regex SpRegex = new Regex(@"[S][0-9]{2}[E][0-9]{2}");
-        public static Regex SXregex = new Regex(@"([0-9]{1,2}[xX][0-9]{2})");
+        public static readonly Regex SpRegex = new Regex(@"[Ss][0-9]{2}[Ee][0-9]{2}");
+        //public static readonly Regex SeRegex = new Regex(@"[Ss][0-9]{2}[Ee][0-9]{2}");
+        public static Regex SXregex = new Regex(@"([0-9]{1,2}[xX][0-9]{1,2})");
         public static readonly Regex ThreeRegex = new Regex(@"(\b\d{3}\b[.])");
         public static readonly Regex FourRegex = new Regex(@"((19|20)[0-9][0-9])");
         public static readonly Regex MorethenfourRegex = new Regex(@"(\b\d{5,10}\b[.])");

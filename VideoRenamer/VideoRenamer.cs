@@ -153,18 +153,20 @@ namespace VideoRenamer
             var newName = "";
             var tmdBapikey = apiKeys.TmdBapikey;
             var tmdb = new TMDbClient(tmdBapikey);
-           
+
             if (tmpFile != null)
             {
                 string format;
                 string group;
                 tmpFile = tmpFile.EndsWith(".") ? tmpFile.Substring(0, tmpFile.Length - 1) : tmpFile;
 
- 
+
                 if (Matches.SpRegex.IsMatch(tmpFile))
                 {
                     var filename = "";
                     const string sEepPattern = @"[Ss][0-9]{2}[Ee][0-9]{2}";
+                    //const string yPattern = @"^(19|20)[0-9][0-9]";
+                    var tmpRegex = new Regex(@"([0-9]{1,2}[0-9]{1,2}).*");
                     var sEepMatch = Regex.Match(tmpFile, sEepPattern);
                     var sEep = sEepMatch.Value;
                     var sEepSize = sEep.Length;
@@ -179,8 +181,11 @@ namespace VideoRenamer
                         if (!TestWord(item, Matches.FormatRegex)) filename += item + ".";
                         else break;
                     }
-                    filename = filename.Substring(0, filename.Length - 1);
-                    tmpFile = tmpFile.Substring(filename.Length + 1);
+                    filename = filename.Substring(0, filename.Length);
+                    var yRegex = Regex.Match(filename, tmpRegex.ToString());
+                    var year = yRegex.Value.ToLower();
+                    filename = tmpRegex.Replace(filename, string.Empty);
+                    tmpFile = year.Length> 0 ?  tmpFile.Substring(filename.Length + year.Length - 1) : tmpFile.Substring(filename.Length + year.Length);
                     format = SearchMatch(tmpFile, Matches.FormatRegex.ToString());
                     format = format.Substring(0, format.Length - 1);
                     tmpFile = tmpFile.StartsWith("-") ? tmpFile.Substring(1) : tmpFile;
@@ -218,13 +223,14 @@ namespace VideoRenamer
                         return replace ?? tmp;
                     });
                     var epName = "";
-                    var sEep_num = sEep.ToUpper().TrimStart('S').Split('E');
-                    var searchResults = tmdb.SearchTvShowAsync(filename.Replace('.', ' ')).Result;
+                    var sEepNum = sEep.ToUpper().TrimStart('S').Split('E');
+                    var cleanFilename = filename.TrimEnd('.').Replace('.', ' ');
+                    var searchResults = tmdb.SearchTvShowAsync(cleanFilename).Result;
                     foreach (var item in searchResults.Results)
                     {
-                        if (!item.Name.ToLower().Equals(filename.Replace('.', ' ').ToLower())) continue;
+                        if (!item.Name.ToLower().Equals(cleanFilename.ToLower())) continue;
                         var uri =
-                            $"https://api.themoviedb.org/3/tv/{item.Id}/season/{sEep_num[0]}/episode/{sEep_num[1]}?api_key={tmdBapikey}";
+                            $"https://api.themoviedb.org/3/tv/{item.Id}/season/{sEepNum[0]}/episode/{sEepNum[1]}?api_key={tmdBapikey}";
                         var client = new RestClient(uri);
                         var request = new RestRequest { Method = Method.GET };
                         request.AddHeader("Accept", "application/json");
@@ -232,14 +238,19 @@ namespace VideoRenamer
                         var response = client.Execute(request);
                         var deserializeObjectJson = JsonConvert.DeserializeObject(response.Content);
                         var token = JObject.Parse(deserializeObjectJson.ToString());
-                        epName = token.SelectToken("name").Value<string>().Replace(' ', '.');
-                    }
-                    newName = original != null && original.ToLower().Contains(epName.ToLower()) ? original : CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + sEep + epName + '.' +  format + startwith + group + ext;
-                }
+                        var result = token.SelectToken("name").Value<string>();
+                        var delimitersStrings = new [] {"-", "_","+", "."};
+                        var isDelimiter = delimitersStrings.Any(delimit => result.Contains(delimit));
 
+                        epName = isDelimiter ? result.Replace(" ", string.Empty) + "." : result.Replace(" ", ".") + ".";
+                        break;
+                    }
+                    newName = original != null && original.ToLower().Contains(epName.ToLower()) ? original : CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + year + sEep + epName + format + startwith + group + ext;
+                }
                 else if (Matches.SXregex.IsMatch(tmpFile))
                 {
                     var sPattern = "[0-9]{1,2}[xX]";
+                    var tmpRegex = new Regex(@"([0-9]{1,2}[0-9]{1,2}).*");
                     var sRegex = Regex.Match(tmpFile, sPattern);
                     var se = sRegex.Value.ToLower();
                     var seSize = se.Length;
@@ -255,8 +266,11 @@ namespace VideoRenamer
 
                     Matches.SXregex = new Regex(@"([0-9]{1,2}[xX][0-9]{1,2}).*");
                     var filename = Matches.SXregex.Replace(tmpFile, string.Empty);
-                    if (filename.EndsWith(".")) filename = filename.Substring(0, filename.Length - 1);
-                    tmpFile = tmpFile.Substring(filename.Length + seSize + epSize);
+                    //if (filename.EndsWith(".")) filename = filename.Substring(0, filename.Length - 1);
+                    var yRegex = Regex.Match(filename, tmpRegex.ToString());
+                    var year = yRegex.Value.ToLower();
+                    filename = tmpRegex.Replace(filename, string.Empty);
+                    tmpFile = year.Length > 0 ? tmpFile.Substring(filename.Length + year.Length + seSize + epSize) : tmpFile.Substring(filename.Length + seSize + epSize);
                     tmpFile = tmpFile.StartsWith(".") ? tmpFile.Substring(1) : tmpFile;
                     format = SearchMatch(tmpFile, Matches.FormatRegex.ToString());
                     var fDict = Matches.FormatList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
@@ -289,11 +303,12 @@ namespace VideoRenamer
                         gDict.TryGetValue(tmp, out replace);
                         return replace ?? tmp;
                     });
-                    var epName="";
-                    var searchResults = tmdb.SearchTvShowAsync(filename.Replace('.',' ')).Result;
+                    var epName = "";
+                    var cleanFilename = filename.TrimEnd('.').Replace('.', ' ');
+                    var searchResults = tmdb.SearchTvShowAsync(cleanFilename).Result;
                     foreach (var item in searchResults.Results)
                     {
-                        if (!item.Name.ToLower().Equals(filename.Replace('.', ' ').ToLower())) continue;
+                        if (!item.Name.ToLower().Equals(cleanFilename.ToLower())) continue;
                         var uri =
                             $"https://api.themoviedb.org/3/tv/{item.Id}/season/{se.TrimStart('S')}/episode/{ep.TrimStart('E')}?api_key={tmdBapikey}";
                         var client = new RestClient(uri);
@@ -303,10 +318,14 @@ namespace VideoRenamer
                         var response = client.Execute(request);
                         var deserializeObjectJson = JsonConvert.DeserializeObject(response.Content);
                         var token = JObject.Parse(deserializeObjectJson.ToString());
-                        epName = token.SelectToken("name").Value<string>().Replace(' ','.');
+                        var result = token.SelectToken("name").Value<string>();
+                        var delimitersStrings = new[] { "-", "_", "+", "." };
+                        var isDelimiter = delimitersStrings.Any(delimit => result.Contains(delimit));
+
+                        epName = isDelimiter ? result.Replace(" ", string.Empty) : result.Replace(" ", ".");
+                        break;
                     }
-                     
-                    newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + sEep + "." + epName + '.' + format + startwith + group + ext;
+                    newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + year + sEep + "." + epName + '.' + format + startwith + group + ext;
 
                 }
                 else if (Matches.ThreeRegex.IsMatch(tmpFile))
@@ -365,10 +384,11 @@ namespace VideoRenamer
                     });
                     var epName = "";
                     var sEep_num = sEep.TrimStart('S').Split('E');
-                    var searchResults = tmdb.SearchTvShowAsync(filename.Replace('.', ' ')).Result;
+                    var cleanFilename = filename.TrimEnd('.').Replace('.', ' ');
+                    var searchResults = tmdb.SearchTvShowAsync(cleanFilename).Result;
                     foreach (var item in searchResults.Results)
                     {
-                        if (!item.Name.ToLower().Equals(filename.Replace('.', ' ').ToLower())) continue;
+                        if (!item.Name.ToLower().Equals(cleanFilename.ToLower())) continue;
                         var uri =
                             $"https://api.themoviedb.org/3/tv/{item.Id}/season/{sEep_num[0]}/episode/{sEep_num[1]}?api_key={tmdBapikey}";
                         var client = new RestClient(uri);
@@ -376,11 +396,17 @@ namespace VideoRenamer
                         request.AddHeader("Accept", "application/json");
                         request.Parameters.Clear();
                         var response = client.Execute(request);
+                        if (response.StatusCode != HttpStatusCode.OK) break;
                         var deserializeObjectJson = JsonConvert.DeserializeObject(response.Content);
                         var token = JObject.Parse(deserializeObjectJson.ToString());
-                        epName = token.SelectToken("name").Value<string>().Replace(' ', '.');
+                        var result = token.SelectToken("name").Value<string>();
+                        var delimitersStrings = new[] { "-", "_", "+", "." };
+                        var isDelimiter = delimitersStrings.Any(delimit => result.Contains(delimit));
+
+                        epName = isDelimiter ? result.Replace(" ", string.Empty) +"." : result.Replace(" ", ".") + ".";
+                        break;
                     }
-                    newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + year + sEep + epName + '.' + format + startwith + group + ext;
+                    newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + year + sEep + epName + format + startwith + group + ext;
                 }
                 else if (Matches.FourRegex.IsMatch(tmpFile))
                 {
@@ -438,10 +464,11 @@ namespace VideoRenamer
                     });
                     var epName = "";
                     var sEep_num = sEep.TrimStart('S').Split('E');
-                    var searchResults = tmdb.SearchTvShowAsync(filename.Replace('.', ' ')).Result;
+                    var cleanFilename = filename.TrimEnd('.').Replace('.', ' ');
+                    var searchResults = tmdb.SearchTvShowAsync(cleanFilename).Result;
                     foreach (var item in searchResults.Results)
                     {
-                        if (!item.Name.ToLower().Equals(filename.Replace('.', ' ').ToLower())) continue;
+                        if (!item.Name.ToLower().Equals(cleanFilename.ToLower())) continue;
                         var uri =
                             $"https://api.themoviedb.org/3/tv/{item.Id}/season/{sEep_num[0]}/episode/{sEep_num[1]}?api_key={tmdBapikey}";
                         var client = new RestClient(uri);
@@ -451,7 +478,12 @@ namespace VideoRenamer
                         var response = client.Execute(request);
                         var deserializeObjectJson = JsonConvert.DeserializeObject(response.Content);
                         var token = JObject.Parse(deserializeObjectJson.ToString());
-                        epName = token.SelectToken("name").Value<string>().Replace(' ', '.');
+                        var result = token.SelectToken("name").Value<string>();
+                        var delimitersStrings = new[] { "-", "_", "+", "." };
+                        var isDelimiter = delimitersStrings.Any(delimit => result.Contains(delimit));
+
+                        epName = isDelimiter ? result.Replace(" ", string.Empty) : result.Replace(" ", ".");
+                        break;
                     }
                     newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + year + sEep + epName + format + startwith + group + ext;
 
@@ -505,25 +537,30 @@ namespace VideoRenamer
                     });
                     var epName = "";
                     var sEep_num = sEep.TrimStart('S').Split('E');
-                    var searchResults = tmdb.SearchTvShowAsync(filename.Replace('.', ' ')).Result;
+                    var cleanFilename = filename.TrimEnd('.').Replace('.', ' ');
+                    var searchResults = tmdb.SearchTvShowAsync(cleanFilename).Result;
                     foreach (var item in searchResults.Results)
                     {
-                        if (!item.Name.ToLower().Equals(filename.Replace('.', ' ').ToLower())) continue;
+                        if (!item.Name.ToLower().Equals(cleanFilename.ToLower())) continue;
                         var uri =
                             $"https://api.themoviedb.org/3/tv/{item.Id}/season/{sEep_num[0]}/episode/{sEep_num[1]}?api_key={tmdBapikey}";
                         var client = new RestClient(uri);
-                        var request = new RestRequest {Method = Method.GET};
+                        var request = new RestRequest { Method = Method.GET };
                         request.AddHeader("Accept", "application/json");
                         request.Parameters.Clear();
                         var response = client.Execute(request);
                         var deserializeObjectJson = JsonConvert.DeserializeObject(response.Content);
                         var token = JObject.Parse(deserializeObjectJson.ToString());
-                        epName = token.SelectToken("name").Value<string>().Replace(' ', '.');
-                    }
+                        var result = token.SelectToken("name").Value<string>();
+                        var delimitersStrings = new[] { "-", "_", "+", "." };
+                        var isDelimiter = delimitersStrings.Any(delimit => result.Contains(delimit));
 
+                        epName = isDelimiter ? result.Replace(" ", string.Empty) : result.Replace(" ", ".");
+                        break;
+                    }
                     newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + sEep + epName + '.' + format + startwith + group + ext;
 
-                }  
+                }
             }
             if (newName != null)
             {

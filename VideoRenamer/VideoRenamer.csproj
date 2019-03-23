@@ -65,6 +65,12 @@
     <Compile Include="CryptorEngine.cs" />
     <Compile Include="FolderSelectDialog.cs" />
     <Compile Include="Matches.cs" />
+    <Compile Include="MsgBox.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MsgBox.designer.cs">
+      <DependentUpon>MsgBox.cs</DependentUpon>
+    </Compile>
     <Compile Include="Reflector.cs" />
     <Compile Include="VideoRenamer.cs">
       <SubType>Form</SubType>
@@ -74,6 +80,9 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="MsgBox.resx">
+      <DependentUpon>MsgBox.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="VideoRenamer.resx">
       <DependentUpon>VideoRenamer.cs</DependentUpon>
     </EmbeddedResource>

@@ -9,10 +9,9 @@ using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using System.Xml.Linq;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using TMDbLib.Client;
-using TMDbLib.Objects.TvShows;
 using RestSharp;
+using TMDbLib.Objects.TvShows;
 
 
 namespace VideoRenamer
@@ -53,11 +52,14 @@ namespace VideoRenamer
             return (from name in list let extension = Path.GetExtension(name) where extension != null let ext = extension.ToLower() where ext.Equals(".mp4") || ext.Equals(".avi") || ext.Equals(".mkv") || ext.Equals(".srt") select name).ToList();
         }
 
+        private static Dictionary<string, string> _matches = new Dictionary<string, string>();
+
         //private bool _load = true;
         private void openFolderToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //_load = true;
             listView.Items.Clear();
+            _matches.Clear();
             var fs = new FolderSelectDialog();
             var result = fs.ShowDialog();
             if (!result) return;
@@ -73,6 +75,7 @@ namespace VideoRenamer
         private void openFileToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //_load = true;
+
             var fs = new OpenFileDialog
             {
                 Title = @"Pick Some Files To ProcessName",
@@ -91,10 +94,12 @@ namespace VideoRenamer
             //_load = false;
         }
 
+/*
         private static bool TestWord(string file, Regex filter)
         {
             return filter.IsMatch(file);
         }
+*/
 
         private static string SearchMatch(string input, string pattern)
         {
@@ -103,11 +108,9 @@ namespace VideoRenamer
             foreach (Match match in Regex.Matches(input, pattern))
             {
                 tmp = match.Value;
-                index.Add(input.IndexOf(tmp, StringComparison.Ordinal));
+                index.Add(input.IndexOf(tmp, StringComparison.OrdinalIgnoreCase));
             }
-            if (index.Count > 1)
-                return input.Substring(index[0], index[index.Count - 1] + tmp.Length + 1);
-            return tmp;
+            return index.Count > 1 ? input.Substring(index[0], index[index.Count - 1] + tmp.Length - index[0]) : tmp;
         }
 
         private static IList<string> GetFiles(string path, string pattern)
@@ -156,442 +159,282 @@ namespace VideoRenamer
 
             if (tmpFile != null)
             {
-                string format;
-                string group;
+                //string format;
+                //string group;
                 tmpFile = tmpFile.EndsWith(".") ? tmpFile.Substring(0, tmpFile.Length - 1) : tmpFile;
+                var index = 0;
+                var title = extract_Title(tmpFile);
+                index += title.Length;
+                var year = GetYear(tmpFile.Substring(index));
+                index += year.Length;
+                var sEep = extract_seEp(tmpFile.Substring(index));
+                index += sEep.Length;
+                var format = extract_Format(tmpFile.Substring(index));
+                index += format.Length;
+                var group = extract_Group(tmpFile.Substring(index));
+                //index += group.Length;
+                //var tmpString = tmpFile.LastIndexOf(format, StringComparison.OrdinalIgnoreCase);
+                var startWith = extract_startWite(tmpFile.Substring(index));
+                var epName = GetEpName(title.TrimEnd('.').Replace(".", " "), tmdb, sEep, year);
+                //newName = original != null && original.ToLower().Contains(epName.ToLower()) ? original : CultureInfo.CurrentCulture.TextInfo.ToTitleCase(title) + year + sEep + epName + format + startWith + group + ext;
+
+                if (original != null && !string.IsNullOrEmpty(epName) && original.ToLower().Contains(epName.ToLower()))
+                    newName = original;
+                else
+                    newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(title) + year + sEep + epName + format + startWith + group + ext;
+                
 
 
-                if (Matches.SpRegex.IsMatch(tmpFile))
-                {
-                    var filename = "";
-                    const string sEepPattern = @"[Ss][0-9]{2}[Ee][0-9]{2}";
-                    //const string yPattern = @"^(19|20)[0-9][0-9]";
-                    var tmpRegex = new Regex(@"([0-9]{1,2}[0-9]{1,2}).*");
-                    var sEepMatch = Regex.Match(tmpFile, sEepPattern);
-                    var sEep = sEepMatch.Value;
-                    var sEepSize = sEep.Length;
-                    if (sEepSize != 0)
-                    {
-                        tmpFile = tmpFile.Replace(sEep + ".", string.Empty);
-                        sEep = sEep.ToUpper() + ".";
-                    }
-                    var tmpFileSplit = tmpFile.Split('.');
-                    foreach (var item in tmpFileSplit)
-                    {
-                        if (!TestWord(item, Matches.FormatRegex)) filename += item + ".";
-                        else break;
-                    }
-                    filename = filename.Substring(0, filename.Length);
-                    var yRegex = Regex.Match(filename, tmpRegex.ToString());
-                    var year = yRegex.Value.ToLower();
-                    filename = tmpRegex.Replace(filename, string.Empty);
-                    tmpFile = year.Length> 0 ?  tmpFile.Substring(filename.Length + year.Length - 1) : tmpFile.Substring(filename.Length + year.Length);
-                    format = SearchMatch(tmpFile, Matches.FormatRegex.ToString());
-                    format = format.Substring(0, format.Length - 1);
-                    tmpFile = tmpFile.StartsWith("-") ? tmpFile.Substring(1) : tmpFile;
-                    var fDict = Matches.FormatList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
-                    format = Regex.Replace(format.ToUpper(), @"\b.+?\b", x =>
-                    {
-                        string replace;
-                        fDict.TryGetValue(x.Value, out replace);
-                        return replace ?? x.Value;
-                    });
-                    var fMatch = Regex.Match(format, "(X|H)?(264|265)");
-                    var mc = fMatch.Value;
-                    format = Regex.Replace(format, mc, mc.ToLower());
-                    tmpFile = tmpFile.Substring(format.Length);
-                    var startwith = @"";
-                    if (tmpFile.StartsWith("-"))
-                    {
-                        startwith = @"-";
-                        tmpFile = tmpFile.Substring(1);
-                    }
-                    else if (tmpFile.StartsWith("."))
-                    {
-                        startwith = @".";
-                        tmpFile = tmpFile.Substring(1);
-                    }
-
-
-                    group = SearchMatch(tmpFile, Matches.GroupRegex.ToString());
-                    var gDict = Matches.GroupList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
-                    group = Regex.Replace(group, @"[^\>]*", x =>
-                    {
-                        var tmp = x.Value.StartsWith("-") ? x.Value.Substring(1) : x.Value;
-                        string replace;
-                        gDict.TryGetValue(tmp, out replace);
-                        return replace ?? tmp;
-                    });
-                    var epName = "";
-                    var sEepNum = sEep.ToUpper().TrimStart('S').Split('E');
-                    var cleanFilename = filename.TrimEnd('.').Replace('.', ' ');
-                    var searchResults = tmdb.SearchTvShowAsync(cleanFilename).Result;
-                    foreach (var item in searchResults.Results)
-                    {
-                        if (!item.Name.ToLower().Equals(cleanFilename.ToLower())) continue;
-                        var uri =
-                            $"https://api.themoviedb.org/3/tv/{item.Id}/season/{sEepNum[0]}/episode/{sEepNum[1]}?api_key={tmdBapikey}";
-                        var client = new RestClient(uri);
-                        var request = new RestRequest { Method = Method.GET };
-                        request.AddHeader("Accept", "application/json");
-                        request.Parameters.Clear();
-                        var response = client.Execute(request);
-                        var deserializeObjectJson = JsonConvert.DeserializeObject(response.Content);
-                        var token = JObject.Parse(deserializeObjectJson.ToString());
-                        var result = token.SelectToken("name").Value<string>();
-                        var delimitersStrings = new [] {"-", "_","+", "."};
-                        var isDelimiter = delimitersStrings.Any(delimit => result.Contains(delimit));
-
-                        epName = isDelimiter ? result.Replace(" ", string.Empty) + "." : result.Replace(" ", ".") + ".";
-                        break;
-                    }
-                    newName = original != null && original.ToLower().Contains(epName.ToLower()) ? original : CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + year + sEep + epName + format + startwith + group + ext;
-                }
-                else if (Matches.SXregex.IsMatch(tmpFile))
-                {
-                    var sPattern = "[0-9]{1,2}[xX]";
-                    var tmpRegex = new Regex(@"([0-9]{1,2}[0-9]{1,2}).*");
-                    var sRegex = Regex.Match(tmpFile, sPattern);
-                    var se = sRegex.Value.ToLower();
-                    var seSize = se.Length;
-                    se = se.Replace("x", "");
-                    se = se.Length > 0 && se.Length < 2 ? "S0" + se : "S" + se;
-                    sPattern = "[xX][0-9]{1,2}";
-                    var epRegex = Regex.Match(tmpFile, sPattern);
-                    var ep = epRegex.Value.ToLower();
-                    var epSize = ep.Length;
-                    ep = ep.Replace("x", "");
-                    ep = ep.Length > 0 && ep.Length < 2 ? "E0" + ep : "E" + ep;
-                    var sEep = se + ep;
-
-                    Matches.SXregex = new Regex(@"([0-9]{1,2}[xX][0-9]{1,2}).*");
-                    var filename = Matches.SXregex.Replace(tmpFile, string.Empty);
-                    //if (filename.EndsWith(".")) filename = filename.Substring(0, filename.Length - 1);
-                    var yRegex = Regex.Match(filename, tmpRegex.ToString());
-                    var year = yRegex.Value.ToLower();
-                    filename = tmpRegex.Replace(filename, string.Empty);
-                    tmpFile = year.Length > 0 ? tmpFile.Substring(filename.Length + year.Length + seSize + epSize) : tmpFile.Substring(filename.Length + seSize + epSize);
-                    tmpFile = tmpFile.StartsWith(".") ? tmpFile.Substring(1) : tmpFile;
-                    format = SearchMatch(tmpFile, Matches.FormatRegex.ToString());
-                    var fDict = Matches.FormatList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
-                    format = Regex.Replace(format.ToUpper(), @"\b.+?\b", x =>
-                    {
-                        fDict.TryGetValue(x.Value, out string replace);
-                        return replace ?? x.Value;
-                    });
-                    var fMatch = Regex.Match(format, "(X|H)?(264|265)");
-                    var mc = fMatch.Value;
-                    format = Regex.Replace(format, mc, mc.ToLower());
-                    tmpFile = tmpFile.Substring(format.Length);
-                    var startwith = @"";
-                    if (tmpFile.StartsWith("-"))
-                    {
-                        startwith = @"-";
-                        tmpFile = tmpFile.Substring(1);
-                    }
-                    else if (tmpFile.StartsWith("."))
-                    {
-                        startwith = @".";
-                        tmpFile = tmpFile.Substring(1);
-                    }
-                    group = SearchMatch(tmpFile, Matches.GroupRegex.ToString());
-                    var gDict = Matches.GroupList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
-                    group = Regex.Replace(group, @"[^\>]*", x =>
-                    {
-                        var tmp = x.Value.StartsWith("-") ? x.Value.Substring(1) : x.Value;
-                        string replace;
-                        gDict.TryGetValue(tmp, out replace);
-                        return replace ?? tmp;
-                    });
-                    var epName = "";
-                    var cleanFilename = filename.TrimEnd('.').Replace('.', ' ');
-                    var searchResults = tmdb.SearchTvShowAsync(cleanFilename).Result;
-                    foreach (var item in searchResults.Results)
-                    {
-                        if (!item.Name.ToLower().Equals(cleanFilename.ToLower())) continue;
-                        var uri =
-                            $"https://api.themoviedb.org/3/tv/{item.Id}/season/{se.TrimStart('S')}/episode/{ep.TrimStart('E')}?api_key={tmdBapikey}";
-                        var client = new RestClient(uri);
-                        var request = new RestRequest { Method = Method.GET };
-                        request.AddHeader("Accept", "application/json");
-                        request.Parameters.Clear();
-                        var response = client.Execute(request);
-                        var deserializeObjectJson = JsonConvert.DeserializeObject(response.Content);
-                        var token = JObject.Parse(deserializeObjectJson.ToString());
-                        var result = token.SelectToken("name").Value<string>();
-                        var delimitersStrings = new[] { "-", "_", "+", "." };
-                        var isDelimiter = delimitersStrings.Any(delimit => result.Contains(delimit));
-
-                        epName = isDelimiter ? result.Replace(" ", string.Empty) : result.Replace(" ", ".");
-                        break;
-                    }
-                    newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + year + sEep + "." + epName + '.' + format + startwith + group + ext;
-
-                }
-                else if (Matches.ThreeRegex.IsMatch(tmpFile))
-                {
-                    const string yPattern = @"^(19|20)[0-9][0-9]";
-                    const string s3Pattern = @"\b\d{3}\b";
-                    const string s4Pattern = @"\b\d{4}\b";
-                    var tmpRegex = new Regex(@"([0-9]{1,2}[0-9]{1,2}).*");
-                    var filename = tmpRegex.Replace(tmpFile, string.Empty);
-                    if (filename.EndsWith(".")) filename = filename.Substring(0, filename.Length - 1);
-                    tmpFile = tmpFile.Substring(filename.Length + 1);
-                    var yRegex = Regex.Match(tmpFile, yPattern);
-                    var year = yRegex.Value.ToLower();
-                    if (year.Length > 0)
-                        year += ".";
-                    tmpFile = tmpFile.Substring(year.Length);
-                    var sRegex = Regex.Match(tmpFile, s3Pattern);
-                    if (!sRegex.Success) sRegex = Regex.Match(tmpFile, s4Pattern);
-                    var sEep = sRegex.Value.ToLower();
-                    var sEepSize = sEep.Length;
-                    if (sEepSize != 0)
-                        sEep = sEep.Length > 3 ? "S" + sEep.Substring(0, 2) + "E" + sEep.Substring(2) + "." : "S0" + sEep.Substring(0, 1) + "E" + sEep.Substring(1) + ".";
-                    tmpFile = tmpFile.Substring(sEepSize);
-                    tmpFile = tmpFile.StartsWith(".") ? tmpFile.Substring(1) : tmpFile;
-                    format = SearchMatch(tmpFile, Matches.FormatRegex.ToString());
-                    var fDict = Matches.FormatList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
-                    format = Regex.Replace(format.ToUpper(), @"\b.+?\b", x =>
-                    {
-                        string replace;
-                        fDict.TryGetValue(x.Value, out replace);
-                        return replace ?? x.Value;
-                    });
-                    var fMatch = Regex.Match(format, "(X|H)?(264|265)");
-                    var mc = fMatch.Value;
-                    format = Regex.Replace(format, mc, mc.ToLower());
-                    tmpFile = tmpFile.Substring(format.Length);
-                    var startwith = @"";
-                    if (tmpFile.StartsWith("-"))
-                    {
-                        startwith = @"-";
-                        tmpFile = tmpFile.Substring(1);
-                    }
-                    else if (tmpFile.StartsWith("."))
-                    {
-                        startwith = @".";
-                        tmpFile = tmpFile.Substring(1);
-                    }
-                    group = SearchMatch(tmpFile, Matches.GroupRegex.ToString());
-                    var gDict = Matches.GroupList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
-                    group = Regex.Replace(group, @"[^\>]*", x =>
-                    {
-                        var tmp = x.Value.StartsWith("-") ? x.Value.Substring(1) : x.Value;
-                        string replace;
-                        gDict.TryGetValue(tmp, out replace);
-                        return replace ?? tmp;
-                    });
-                    var epName = "";
-                    var sEep_num = sEep.TrimStart('S').Split('E');
-                    var cleanFilename = filename.TrimEnd('.').Replace('.', ' ');
-                    var searchResults = tmdb.SearchTvShowAsync(cleanFilename).Result;
-                    foreach (var item in searchResults.Results)
-                    {
-                        if (!item.Name.ToLower().Equals(cleanFilename.ToLower())) continue;
-                        var uri =
-                            $"https://api.themoviedb.org/3/tv/{item.Id}/season/{sEep_num[0]}/episode/{sEep_num[1]}?api_key={tmdBapikey}";
-                        var client = new RestClient(uri);
-                        var request = new RestRequest { Method = Method.GET };
-                        request.AddHeader("Accept", "application/json");
-                        request.Parameters.Clear();
-                        var response = client.Execute(request);
-                        if (response.StatusCode != HttpStatusCode.OK) break;
-                        var deserializeObjectJson = JsonConvert.DeserializeObject(response.Content);
-                        var token = JObject.Parse(deserializeObjectJson.ToString());
-                        var result = token.SelectToken("name").Value<string>();
-                        var delimitersStrings = new[] { "-", "_", "+", "." };
-                        var isDelimiter = delimitersStrings.Any(delimit => result.Contains(delimit));
-
-                        epName = isDelimiter ? result.Replace(" ", string.Empty) +"." : result.Replace(" ", ".") + ".";
-                        break;
-                    }
-                    newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + year + sEep + epName + format + startwith + group + ext;
-                }
-                else if (Matches.FourRegex.IsMatch(tmpFile))
-                {
-                    const string yPattern = @"^(19|20)[0-9][0-9]";
-                    const string s3Pattern = @"\b\d{3}\b";
-                    const string s4Pattern = @"\b\d{4}\b";
-                    var tmpRegex = new Regex("(19|20)[0-9][0-9].*");
-                    var filename = tmpRegex.Replace(tmpFile, string.Empty);
-                    if (filename.EndsWith(".")) filename = filename.Substring(0, filename.Length - 1);
-                    tmpFile = tmpFile.Substring(filename.Length + 1).ToLower();
-                    var yRegex = Regex.Match(tmpFile, yPattern);
-                    var year = yRegex.Value.ToLower();
-                    if (year.Length > 0)
-                        year += ".";
-                    tmpFile = tmpFile.Substring(year.Length);
-                    var sRegex = Regex.Match(tmpFile, s3Pattern);
-                    if (!sRegex.Success) sRegex = Regex.Match(tmpFile, s4Pattern);
-                    var sEep = sRegex.Value.ToLower();
-                    var sEepSize = sEep.Length;
-                    if (sEepSize != 0)
-                        sEep = sEepSize > 3 ? "S" + sEep.Substring(0, 2) + "E" + sEep.Substring(2) + "." : "S0" + sEep.Substring(0, 1) + "E" + sEep.Substring(1) + ".";
-                    tmpFile = tmpFile.Substring(sEepSize);
-                    tmpFile = tmpFile.StartsWith(".") ? tmpFile.Substring(1) : tmpFile;
-                    format = SearchMatch(tmpFile, Matches.FormatRegex.ToString());
-                    var fDict = Matches.FormatList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
-                    format = Regex.Replace(format.ToUpper(), @"\b.+?\b", x =>
-                    {
-                        string replace;
-                        fDict.TryGetValue(x.Value, out replace);
-                        return replace ?? x.Value;
-                    });
-                    var fMatch = Regex.Match(format, "(X|H)?(264|265)");
-                    var mc = fMatch.Value;
-                    format = Regex.Replace(format, mc, mc.ToLower());
-                    tmpFile = tmpFile.Substring(format.Length);
-                    var startwith = @"";
-                    if (tmpFile.StartsWith("-"))
-                    {
-                        startwith = @"-";
-                        tmpFile = tmpFile.Substring(1);
-                    }
-                    else if (tmpFile.StartsWith("."))
-                    {
-                        startwith = @".";
-                        tmpFile = tmpFile.Substring(1);
-                    }
-                    group = SearchMatch(tmpFile, Matches.GroupRegex.ToString());
-                    var gDict = Matches.GroupList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
-                    group = Regex.Replace(group, @"[^\>]*", x =>
-                    {
-                        var tmp = x.Value.StartsWith("-") ? x.Value.Substring(1) : x.Value;
-                        string replace;
-                        gDict.TryGetValue(tmp, out replace);
-                        return replace ?? tmp;
-                    });
-                    var epName = "";
-                    var sEep_num = sEep.TrimStart('S').Split('E');
-                    var cleanFilename = filename.TrimEnd('.').Replace('.', ' ');
-                    var searchResults = tmdb.SearchTvShowAsync(cleanFilename).Result;
-                    foreach (var item in searchResults.Results)
-                    {
-                        if (!item.Name.ToLower().Equals(cleanFilename.ToLower())) continue;
-                        var uri =
-                            $"https://api.themoviedb.org/3/tv/{item.Id}/season/{sEep_num[0]}/episode/{sEep_num[1]}?api_key={tmdBapikey}";
-                        var client = new RestClient(uri);
-                        var request = new RestRequest { Method = Method.GET };
-                        request.AddHeader("Accept", "application/json");
-                        request.Parameters.Clear();
-                        var response = client.Execute(request);
-                        var deserializeObjectJson = JsonConvert.DeserializeObject(response.Content);
-                        var token = JObject.Parse(deserializeObjectJson.ToString());
-                        var result = token.SelectToken("name").Value<string>();
-                        var delimitersStrings = new[] { "-", "_", "+", "." };
-                        var isDelimiter = delimitersStrings.Any(delimit => result.Contains(delimit));
-
-                        epName = isDelimiter ? result.Replace(" ", string.Empty) : result.Replace(" ", ".");
-                        break;
-                    }
-                    newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + year + sEep + epName + format + startwith + group + ext;
-
-                }
-                else if (Matches.MorethenfourRegex.IsMatch(tmpFile))
-                {
-                    const string m4Pattern = @"\b\d{5,10}\b";
-                    var tmpRegex = new Regex(@"\b\d{5,10}\b.*");
-                    var filename = tmpRegex.Replace(tmpFile, string.Empty);
-                    if (filename.EndsWith(".")) filename = filename.Substring(0, filename.Length - 1);
-                    tmpFile = tmpFile.Substring(filename.Length + 1).ToLower();
-
-                    var sRegex = Regex.Match(tmpFile, m4Pattern);
-                    var sEep = sRegex.Value.ToLower();
-                    var sEepSize = sEep.Length;
-                    if (sEepSize != 0)
-                        sEep = "S0" + sEep.Substring(0, 1) + "E" + sEep.Substring(1) + ".";
-                    tmpFile = tmpFile.Substring(sEepSize);
-                    tmpFile = tmpFile.StartsWith(".") ? tmpFile.Substring(1) : tmpFile;
-                    format = SearchMatch(tmpFile, Matches.FormatRegex.ToString());
-                    var fDict = Matches.FormatList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
-                    format = Regex.Replace(format.ToUpper(), @"\b.+?\b", x =>
-                    {
-                        string replace;
-                        fDict.TryGetValue(x.Value, out replace);
-                        return replace ?? x.Value;
-                    });
-                    var fMatch = Regex.Match(format, "(X|H)?(264|265)");
-                    var mc = fMatch.Value;
-                    format = Regex.Replace(format, mc, mc.ToLower());
-                    tmpFile = tmpFile.Substring(format.Length);
-                    var startwith = @"";
-                    if (tmpFile.StartsWith("-"))
-                    {
-                        startwith = @"-";
-                        tmpFile = tmpFile.Substring(1);
-                    }
-                    else if (tmpFile.StartsWith("."))
-                    {
-                        startwith = @".";
-                        tmpFile = tmpFile.Substring(1);
-                    }
-                    group = SearchMatch(tmpFile, Matches.GroupRegex.ToString());
-                    var gDict = Matches.GroupList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
-                    group = Regex.Replace(group, @"[^\>]*", x =>
-                    {
-                        var tmp = x.Value.StartsWith("-") ? x.Value.Substring(1) : x.Value;
-                        string replace;
-                        gDict.TryGetValue(tmp, out replace);
-                        return replace ?? tmp;
-                    });
-                    var epName = "";
-                    var sEep_num = sEep.TrimStart('S').Split('E');
-                    var cleanFilename = filename.TrimEnd('.').Replace('.', ' ');
-                    var searchResults = tmdb.SearchTvShowAsync(cleanFilename).Result;
-                    foreach (var item in searchResults.Results)
-                    {
-                        if (!item.Name.ToLower().Equals(cleanFilename.ToLower())) continue;
-                        var uri =
-                            $"https://api.themoviedb.org/3/tv/{item.Id}/season/{sEep_num[0]}/episode/{sEep_num[1]}?api_key={tmdBapikey}";
-                        var client = new RestClient(uri);
-                        var request = new RestRequest { Method = Method.GET };
-                        request.AddHeader("Accept", "application/json");
-                        request.Parameters.Clear();
-                        var response = client.Execute(request);
-                        var deserializeObjectJson = JsonConvert.DeserializeObject(response.Content);
-                        var token = JObject.Parse(deserializeObjectJson.ToString());
-                        var result = token.SelectToken("name").Value<string>();
-                        var delimitersStrings = new[] { "-", "_", "+", "." };
-                        var isDelimiter = delimitersStrings.Any(delimit => result.Contains(delimit));
-
-                        epName = isDelimiter ? result.Replace(" ", string.Empty) : result.Replace(" ", ".");
-                        break;
-                    }
-                    newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + sEep + epName + '.' + format + startwith + group + ext;
-
-                }
             }
-            if (newName != null)
-            {
-                var match = Regex.Match(newName, "(X|H)?(264|265)");
-                var ma = match.Value;
-                newName = Regex.Replace(newName, ma, ma.ToLower());
-                if (newName.Contains("HDTV") && !newName.Contains("XviD") && !Regex.IsMatch(newName, "([xX]|[hH])?(264|265)"))
-                    newName = newName.Replace("HDTV", "HDTV.x264");
-            }
+
+            var match = Regex.Match(newName, "(X|H)?(264|265)");
+            var ma = match.Value;
+            newName = Regex.Replace(newName, ma, ma.ToLower());
+            if (newName.Contains("HDTV") && !newName.Contains("XviD") && !Regex.IsMatch(newName, "([xX]|[hH])?(264|265)"))
+                newName = newName.Replace("HDTV", "HDTV.x264");
+            if (original != null) _matches.Add(original, newName);
 
             return newName;
         }
+
+        private static dynamic GetJson(string uri)
+        {
+            var client = new RestClient(uri);
+            var request = new RestRequest { Method = Method.GET };
+            request.AddHeader("Accept", "application/json");
+            request.Parameters.Clear();
+            var response = client.Execute(request);
+            //var deserializeObjectJson = JsonConvert.DeserializeObject<dynamic>(response.Content);
+            return JsonConvert.DeserializeObject<dynamic>(response.Content);
+            //return deserializeObjectJson.results;
+        }
+        private static string GetEpName(string title, TMDbClient tmdb, string seEp = "", string year = "0")
+        {
+            var potential = new List<dynamic>();
+            var sEepNum = seEp.ToUpper().TrimEnd('.').TrimStart('S').Split('E');
+            if (string.IsNullOrEmpty(seEp)) return "";
+            var tvUri = $"https://api.themoviedb.org/3/search/tv?api_key={tmdb.ApiKey}&language=en-US&query={title}&page=1&first_air_date_year={year}";
+            var response = GetJson(tvUri);
+            foreach (var result in response.results)
+            {
+                if (((string)result.name).ToLower().Equals(title.ToLower()))
+                {
+                    potential.Add(result);
+                }
+            }
+            if (potential.Count == 1)
+            {
+                var uri = $"https://api.themoviedb.org/3/tv/{potential[0].id}/season/{sEepNum[0]}/episode/{sEepNum[1]}?api_key={tmdb.ApiKey}";
+                var tvJson = GetJson(uri);
+                var delimitersStrings = new[] { "-", "_", "+", "." };
+                var isDelimiter = delimitersStrings.Any(delimit => ((string)tvJson.name).Contains(delimit));
+                return isDelimiter ? ((string)tvJson.name).Replace(" ", string.Empty) + "." : ((string)tvJson.name).Replace(" ", ".") + ".";
+
+            }
+
+            if (potential.Count == 0) return "";
+
+            var msg = new MsgBox();
+            const string imdburl = "http://www.imdb.com/title/";
+            const int x = 25;
+            var y = 30;
+            foreach (var potentialItem in potential)
+            {
+                var id = (int)potentialItem.id;
+                var imdbId = (string)tmdb.GetTvShowAsync(id, TvShowMethods.ExternalIds).Result.ExternalIds.ImdbId;
+                msg.AddLabeles(imdburl + imdbId, (string)potentialItem.original_name + " (" + (string)potentialItem.first_air_date + ")", x, y);
+                y += 20;
+            }
+            msg.MyTitle = title;
+            msg.ShowDialog();
+            foreach (var selected in potential)
+            {
+                var imdbId = tmdb.GetTvShowAsync(((int)selected.id), TvShowMethods.ExternalIds).Result.ExternalIds.ImdbId;
+                if (!imdbId.Equals(msg.MyId)) continue;
+                var uri = $"https://api.themoviedb.org/3/tv/{potential[0].id}/season/{sEepNum[0]}/episode/{sEepNum[1]}?api_key={tmdb.ApiKey}";
+                var tvJson = GetJson(uri);
+                //return tvJson.name;
+                var delimitersStrings = new[] { "-", "_", "+", "." };
+                var isDelimiter = delimitersStrings.Any(delimit => ((string)tvJson.name).Contains(delimit));
+                return isDelimiter ? ((string)tvJson.name).Replace(" ", string.Empty) + "." : ((string)tvJson.name).Replace(" ", ".") + ".";
+
+            }
+
+            return "";
+
+        }
+
+        private static string extract_Group(string tmpFile)
+        {
+            var group = SearchMatch(tmpFile, Matches.GroupRegex.ToString());
+            var gDict = Matches.GroupList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
+            group = Regex.Replace(group, @"[^\>]*", x =>
+            {
+                var tmp = x.Value.StartsWith("-") ? x.Value.Substring(1) : x.Value;
+                string replace;
+                gDict.TryGetValue(tmp, out replace);
+                return replace ?? tmp;
+            });
+            return group;
+        }
+
+
+        private static string extract_Format(string tmpFile)
+        {
+            var format = SearchMatch(tmpFile, Matches.FormatRegex.ToString());
+            var fDict = Matches.FormatList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
+            format = Regex.Replace(format.ToUpper(), @"\b.+?\b", x =>
+            {
+                fDict.TryGetValue(x.Value, out string replace);
+                return replace ?? x.Value;
+            });
+            var fMatch = Regex.Match(format, "(X|H)?(264|265)");
+            var mc = fMatch.Value;
+            return Regex.Replace(format, mc, mc.ToLower());
+        }
+
+        private static string extract_startWite(string tmpFile)
+        {
+            if (tmpFile.StartsWith("-"))
+            {
+                return @"-";
+
+            }
+
+            return tmpFile.StartsWith(".") ? @"." : "";
+        }
+
+
+        private static string extract_seEp(string tmpFile)
+        {
+            foreach (var match in Matches.seEp_dic)
+            {
+                var epRegex = Regex.Match(tmpFile, match.Value.ToString().Replace(".*", string.Empty));
+                if (epRegex.Success)
+                {
+                    switch (match.Key)
+                    {
+
+                        case "se":
+
+                            {
+                                var sEep = epRegex.Value;
+                                var sEepSize = sEep.Length;
+                                if (sEepSize != 0)
+                                    return sEep.ToUpper() + ".";
+                            }
+                            break;
+
+                        case "NxM":
+                            {
+                                var sPattern = "[0-9]{1,2}[xX]";
+                                var sRegex = Regex.Match(tmpFile, sPattern);
+                                var se = sRegex.Value.ToLower();
+                                se = se.Replace("x", "");
+                                se = se.Length > 0 && se.Length < 2 ? "S0" + se : "S" + se;
+                                sPattern = "[xX][0-9]{1,2}";
+                                var _epRegex = Regex.Match(tmpFile, sPattern);
+                                var ep = _epRegex.Value.ToLower();
+                                var epSize = ep.Length;
+                                ep = ep.Replace("x", "");
+                                ep = epSize > 0 && ep.Length < 2 ? "E0" + ep : "E" + ep;
+                                if (se.Length > 0 && ep.Length > 0)
+                                    return se + ep + ".";
+                            }
+                            break;
+
+                        case "3d":
+                        case "4d":
+                            {
+                                const string s3Pattern = @"\b\d{3}\b";
+                                const string s4Pattern = @"\b\d{4}\b";
+                                //var tmpRegex = new Regex(@"([0-9]{1,2}[0-9]{1,2}).*");
+                                //var filename = tmpRegex.Replace(tmpFile, string.Empty);
+                                //if (filename.EndsWith(".")) filename = filename.Substring(0, filename.Length - 1);
+                                //tmpFile = tmpFile.Substring(filename.Length + 1);
+                                var sRegex = Regex.Match(tmpFile, s3Pattern);
+                                if (!sRegex.Success) sRegex = Regex.Match(tmpFile, s4Pattern);
+                                var sEep = sRegex.Value.ToLower();
+                                var sEepSize = sEep.Length;
+                                if (sEepSize != 0)
+                                    return sEepSize > 3
+                                        ? "S" + sEep.Substring(0, 2) + "E" + sEep.Substring(2) + "."
+                                        : "S0" + sEep.Substring(0, 1) + "E" + sEep.Substring(1) + ".";
+
+                            }
+                            break;
+
+                        case "other":
+                            {
+                                const string m4Pattern = @"\b\d{5,10}\b";
+                                var tmpRegex = new Regex(@"\b\d{5,10}\b.*");
+                                var filename = tmpRegex.Replace(tmpFile, string.Empty);
+                                if (filename.EndsWith(".")) filename = filename.Substring(0, filename.Length - 1);
+                                tmpFile = tmpFile.Substring(filename.Length + 1).ToLower();
+                                var sRegex = Regex.Match(tmpFile, m4Pattern);
+                                var sEep = sRegex.Value.ToLower();
+                                var sEepSize = sEep.Length;
+                                if (sEepSize != 0)
+                                    return "S0" + sEep.Substring(0, 1) + "E" + sEep.Substring(1) + ".";
+                            }
+                            break;
+                        default:
+                            return "";
+
+                    }
+                }
+            }
+
+            return "";
+
+        }
+
+        private static string GetYear(string tmpFile)
+        {
+            var match = Regex.Match(tmpFile, Matches.YRegex);
+
+            return match.Success ? match.Value + "." : "";
+        }
+
+        private static string extract_Title(string tmpFile)
+        {
+
+            //var title = year.Length > 0 ? tmpFile.Replace(year, string.Empty) : tmpFile;
+            foreach (var match in Matches.seEp_dic)
+            {
+                if (!match.Value.IsMatch(tmpFile)) continue;
+                //title = match.Value.Replace(title, string.Empty);
+                //return title.Contains("..") ? title.Substring(0,title.Length - 1) : title;
+                return match.Value.Replace(tmpFile, string.Empty);
+
+            }
+            return Regex.Replace(tmpFile, $"{Matches.YRegex}.*", string.Empty);
+        }
+
         private void ProcessName(string name)
         {
+            
             var i = listView.Items.Count;
             var original = Path.GetFileName(name);
             var directoryName = Path.GetDirectoryName(name);
             var index = ++i;
-            var newName = ProcessNewName(name);
-            listView.ItemChecked -= listView_ItemChecked;
-            listView.Items.Add(new ListViewItem(new[] { "", index.ToString(), original, newName, directoryName }));
-            listView.ItemChecked += listView_ItemChecked;
-            if (!listView.Items[index - 1].SubItems[2].Text.Equals(listView.Items[index - 1].SubItems[3].Text))
+            if (name == null) return;
+            if (listView.FindItemWithText(Path.GetFileName(name)) == null)
             {
-                listView.Items[index - 1].Checked = true;
-                listView.Items[index - 1].UseItemStyleForSubItems = false;
-                listView.Items[index - 1].SubItems[3].ForeColor = Color.Red;
-            }
-            else
-            {
-                listView.Items[index - 1].SubItems[3].Text = "";
+                var newName = ProcessNewName(name);
+                listView.ItemChecked -= listView_ItemChecked;
+                listView.Items.Add(new ListViewItem(new[] { "", index.ToString(), original, newName, directoryName }));
+                listView.ItemChecked += listView_ItemChecked;
+                if (!listView.Items[index - 1].SubItems[2].Text.Equals(listView.Items[index - 1].SubItems[3].Text))
+                {
+                    listView.Items[index - 1].Checked = true;
+                    listView.Items[index - 1].UseItemStyleForSubItems = false;
+                    listView.Items[index - 1].SubItems[3].ForeColor = Color.Red;
+                }
+                else
+                {
+                    listView.Items[index - 1].SubItems[3].Text = "";
+                }
             }
 
             listView.AutoResizeColumn(1, ColumnHeaderAutoResizeStyle.HeaderSize);
@@ -620,7 +463,8 @@ namespace VideoRenamer
                 for (var i = 0; i < listView.Items.Count; i++)
                 {
                     listView.Items[i].Checked = true;
-                    listView.Items[i].SubItems[3].Text = ProcessNewName(listView.Items[i].SubItems[2].Text);
+                    //listView.Items[i].SubItems[3].Text = ProcessNewName(listView.Items[i].SubItems[2].Text);
+                    listView.Items[i].SubItems[3].Text = _matches[listView.Items[i].SubItems[2].Text];
                     if (!listView.Items[i].SubItems[2].Text.Equals(listView.Items[i].SubItems[3].Text))
                     {
                         listView.Items[i].UseItemStyleForSubItems = false;
@@ -681,7 +525,8 @@ namespace VideoRenamer
             {
                 if (item.Checked)
                 {
-                    item.SubItems[3].Text = ProcessNewName(item.SubItems[2].Text);
+                    //item.SubItems[3].Text = ProcessNewName(item.SubItems[2].Text);
+                    item.SubItems[3].Text = _matches[item.SubItems[2].Text];
                     if (!item.SubItems[2].Text.Equals(item.SubItems[3].Text))
                     {
                         item.UseItemStyleForSubItems = false;
@@ -734,7 +579,7 @@ namespace VideoRenamer
             if (appVersion.CompareTo(newVersion) < 0)
             {
                 var result = MessageBox.Show(
-                    $@"{appName} v.{newVersion} is out!{Environment.NewLine}Would You Like To Donwload It?", @"New Version is avlibale", MessageBoxButtons.YesNo);
+                    $@"{appName} v.{newVersion} is out!{Environment.NewLine}Would You Like To Download It?", @"New Version is available", MessageBoxButtons.YesNo);
                 if (result == DialogResult.Yes)
                     System.Diagnostics.Process.Start(downloadUrl);
             }
@@ -746,3 +591,406 @@ namespace VideoRenamer
         }
     }
 }
+
+
+
+//if (Matches.SpRegex.IsMatch(tmpFile))
+//{
+//    var filename = "";
+//    const string sEepPattern = @"[Ss][0-9]{2}[Ee][0-9]{2}";
+//    //const string yPattern = @"^(19|20)[0-9][0-9]";
+//    var tmpRegex = new Regex(@"([0-9]{1,2}[0-9]{1,2}).*");
+//    var sEepMatch = Regex.Match(tmpFile, sEepPattern);
+//    var sEep = sEepMatch.Value;
+//    var sEepSize = sEep.Length;
+//    if (sEepSize != 0)
+//    {
+//        tmpFile = tmpFile.Replace(sEep + ".", string.Empty);
+//        sEep = sEep.ToUpper() + ".";
+//    }
+//    var tmpFileSplit = tmpFile.Split('.');
+//    foreach (var item in tmpFileSplit)
+//    {
+//        if (!TestWord(item, Matches.FormatRegex)) filename += item + ".";
+//        else break;
+//    }
+//    filename = filename.Substring(0, filename.Length);
+//    var yRegex = Regex.Match(filename, tmpRegex.ToString());
+//    var year = yRegex.Value.ToLower();
+//    filename = tmpRegex.Replace(filename, string.Empty);
+//    tmpFile = year.Length> 0 ?  tmpFile.Substring(filename.Length + year.Length - 1) : tmpFile.Substring(filename.Length + year.Length);
+//    format = SearchMatch(tmpFile, Matches.FormatRegex.ToString());
+//    format = format.Substring(0, format.Length - 1);
+//    tmpFile = tmpFile.StartsWith("-") ? tmpFile.Substring(1) : tmpFile;
+//    var fDict = Matches.FormatList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
+//    format = Regex.Replace(format.ToUpper(), @"\b.+?\b", x =>
+//    {
+//        string replace;
+//        fDict.TryGetValue(x.Value, out replace);
+//        return replace ?? x.Value;
+//    });
+//    var fMatch = Regex.Match(format, "(X|H)?(264|265)");
+//    var mc = fMatch.Value;
+//    format = Regex.Replace(format, mc, mc.ToLower());
+//    tmpFile = tmpFile.Substring(format.Length);
+//    var startwith = @"";
+//    if (tmpFile.StartsWith("-"))
+//    {
+//        startwith = @"-";
+//        tmpFile = tmpFile.Substring(1);
+//    }
+//    else if (tmpFile.StartsWith("."))
+//    {
+//        startwith = @".";
+//        tmpFile = tmpFile.Substring(1);
+//    }
+
+
+//    group = SearchMatch(tmpFile, Matches.GroupRegex.ToString());
+//    var gDict = Matches.GroupList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
+//    group = Regex.Replace(group, @"[^\>]*", x =>
+//    {
+//        var tmp = x.Value.StartsWith("-") ? x.Value.Substring(1) : x.Value;
+//        string replace;
+//        gDict.TryGetValue(tmp, out replace);
+//        return replace ?? tmp;
+//    });
+//    var epName = "";
+//    var sEepNum = sEep.ToUpper().TrimStart('S').Split('E');
+//    var cleanFilename = filename.TrimEnd('.').Replace('.', ' ');
+//    var searchResults = tmdb.SearchTvShowAsync(cleanFilename).Result;
+//    foreach (var item in searchResults.Results)
+//    {
+//        if (!item.Name.ToLower().Equals(cleanFilename.ToLower())) continue;
+//        var uri =
+//            $"https://api.themoviedb.org/3/tv/{item.Id}/season/{sEepNum[0]}/episode/{sEepNum[1]}?api_key={tmdBapikey}";
+//        var client = new RestClient(uri);
+//        var request = new RestRequest { Method = Method.GET };
+//        request.AddHeader("Accept", "application/json");
+//        request.Parameters.Clear();
+//        var response = client.Execute(request);
+//        var deserializeObjectJson = JsonConvert.DeserializeObject(response.Content);
+//        var token = JObject.Parse(deserializeObjectJson.ToString());
+//        var result = token.SelectToken("name").Value<string>();
+//        var delimitersStrings = new [] {"-", "_","+", "."};
+//        var isDelimiter = delimitersStrings.Any(delimit => result.Contains(delimit));
+
+//        epName = isDelimiter ? result.Replace(" ", string.Empty) + "." : result.Replace(" ", ".") + ".";
+//        break;
+//    }
+//    newName = original != null && original.ToLower().Contains(epName.ToLower()) ? original : CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + year + sEep + epName + format + startwith + group + ext;
+//}
+//else if (Matches.SXregex.IsMatch(tmpFile))
+//{
+//    var sPattern = "[0-9]{1,2}[xX]";
+//    var tmpRegex = new Regex(@"([0-9]{1,2}[0-9]{1,2}).*");
+//    var sRegex = Regex.Match(tmpFile, sPattern);
+//    var se = sRegex.Value.ToLower();
+//    var seSize = se.Length;
+//    se = se.Replace("x", "");
+//    se = se.Length > 0 && se.Length < 2 ? "S0" + se : "S" + se;
+//    sPattern = "[xX][0-9]{1,2}";
+//    var epRegex = Regex.Match(tmpFile, sPattern);
+//    var ep = epRegex.Value.ToLower();
+//    var epSize = ep.Length;
+//    ep = ep.Replace("x", "");
+//    ep = ep.Length > 0 && ep.Length < 2 ? "E0" + ep : "E" + ep;
+//    var sEep = se + ep;
+
+//    Matches.SXregex = new Regex(@"([0-9]{1,2}[xX][0-9]{1,2}).*");
+//    var filename = Matches.SXregex.Replace(tmpFile, string.Empty);
+//    //if (filename.EndsWith(".")) filename = filename.Substring(0, filename.Length - 1);
+//    var yRegex = Regex.Match(filename, tmpRegex.ToString());
+//    var year = yRegex.Value.ToLower();
+//    filename = tmpRegex.Replace(filename, string.Empty);
+//    tmpFile = year.Length > 0 ? tmpFile.Substring(filename.Length + year.Length + seSize + epSize) : tmpFile.Substring(filename.Length + seSize + epSize);
+//    tmpFile = tmpFile.StartsWith(".") ? tmpFile.Substring(1) : tmpFile;
+//    format = SearchMatch(tmpFile, Matches.FormatRegex.ToString());
+//    var fDict = Matches.FormatList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
+//    format = Regex.Replace(format.ToUpper(), @"\b.+?\b", x =>
+//    {
+//        fDict.TryGetValue(x.Value, out string replace);
+//        return replace ?? x.Value;
+//    });
+//    var fMatch = Regex.Match(format, "(X|H)?(264|265)");
+//    var mc = fMatch.Value;
+//    format = Regex.Replace(format, mc, mc.ToLower());
+//    tmpFile = tmpFile.Substring(format.Length);
+//    var startwith = @"";
+//    if (tmpFile.StartsWith("-"))
+//    {
+//        startwith = @"-";
+//        tmpFile = tmpFile.Substring(1);
+//    }
+//    else if (tmpFile.StartsWith("."))
+//    {
+//        startwith = @".";
+//        tmpFile = tmpFile.Substring(1);
+//    }
+//    group = SearchMatch(tmpFile, Matches.GroupRegex.ToString());
+//    var gDict = Matches.GroupList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
+//    group = Regex.Replace(group, @"[^\>]*", x =>
+//    {
+//        var tmp = x.Value.StartsWith("-") ? x.Value.Substring(1) : x.Value;
+//        string replace;
+//        gDict.TryGetValue(tmp, out replace);
+//        return replace ?? tmp;
+//    });
+//    var epName = "";
+//    var cleanFilename = filename.TrimEnd('.').Replace('.', ' ');
+//    var searchResults = tmdb.SearchTvShowAsync(cleanFilename).Result;
+//    foreach (var item in searchResults.Results)
+//    {
+//        if (!item.Name.ToLower().Equals(cleanFilename.ToLower())) continue;
+//        var uri =
+//            $"https://api.themoviedb.org/3/tv/{item.Id}/season/{se.TrimStart('S')}/episode/{ep.TrimStart('E')}?api_key={tmdBapikey}";
+//        var client = new RestClient(uri);
+//        var request = new RestRequest { Method = Method.GET };
+//        request.AddHeader("Accept", "application/json");
+//        request.Parameters.Clear();
+//        var response = client.Execute(request);
+//        var deserializeObjectJson = JsonConvert.DeserializeObject(response.Content);
+//        var token = JObject.Parse(deserializeObjectJson.ToString());
+//        var result = token.SelectToken("name").Value<string>();
+//        var delimitersStrings = new[] { "-", "_", "+", "." };
+//        var isDelimiter = delimitersStrings.Any(delimit => result.Contains(delimit));
+
+//        epName = isDelimiter ? result.Replace(" ", string.Empty) : result.Replace(" ", ".");
+//        break;
+//    }
+//    newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + year + sEep + "." + epName + '.' + format + startwith + group + ext;
+
+//}
+//else if (Matches.ThreeRegex.IsMatch(tmpFile))
+//{
+//    const string yPattern = @"^(19|20)[0-9][0-9]";
+//    const string s3Pattern = @"\b\d{3}\b";
+//    const string s4Pattern = @"\b\d{4}\b";
+//    var tmpRegex = new Regex(@"([0-9]{1,2}[0-9]{1,2}).*");
+//    var filename = tmpRegex.Replace(tmpFile, string.Empty);
+//    if (filename.EndsWith(".")) filename = filename.Substring(0, filename.Length - 1);
+//    tmpFile = tmpFile.Substring(filename.Length + 1);
+//    var yRegex = Regex.Match(tmpFile, yPattern);
+//    var year = yRegex.Value.ToLower();
+//    if (year.Length > 0)
+//        year += ".";
+//    tmpFile = tmpFile.Substring(year.Length);
+//    var sRegex = Regex.Match(tmpFile, s3Pattern);
+//    if (!sRegex.Success) sRegex = Regex.Match(tmpFile, s4Pattern);
+//    var sEep = sRegex.Value.ToLower();
+//    var sEepSize = sEep.Length;
+//    if (sEepSize != 0)
+//        sEep = sEep.Length > 3 ? "S" + sEep.Substring(0, 2) + "E" + sEep.Substring(2) + "." : "S0" + sEep.Substring(0, 1) + "E" + sEep.Substring(1) + ".";
+//    tmpFile = tmpFile.Substring(sEepSize);
+//    tmpFile = tmpFile.StartsWith(".") ? tmpFile.Substring(1) : tmpFile;
+//    format = SearchMatch(tmpFile, Matches.FormatRegex.ToString());
+//    var fDict = Matches.FormatList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
+//    format = Regex.Replace(format.ToUpper(), @"\b.+?\b", x =>
+//    {
+//        string replace;
+//        fDict.TryGetValue(x.Value, out replace);
+//        return replace ?? x.Value;
+//    });
+//    var fMatch = Regex.Match(format, "(X|H)?(264|265)");
+//    var mc = fMatch.Value;
+//    format = Regex.Replace(format, mc, mc.ToLower());
+//    tmpFile = tmpFile.Substring(format.Length);
+//    var startwith = @"";
+//    if (tmpFile.StartsWith("-"))
+//    {
+//        startwith = @"-";
+//        tmpFile = tmpFile.Substring(1);
+//    }
+//    else if (tmpFile.StartsWith("."))
+//    {
+//        startwith = @".";
+//        tmpFile = tmpFile.Substring(1);
+//    }
+//    group = SearchMatch(tmpFile, Matches.GroupRegex.ToString());
+//    var gDict = Matches.GroupList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
+//    group = Regex.Replace(group, @"[^\>]*", x =>
+//    {
+//        var tmp = x.Value.StartsWith("-") ? x.Value.Substring(1) : x.Value;
+//        string replace;
+//        gDict.TryGetValue(tmp, out replace);
+//        return replace ?? tmp;
+//    });
+//    var epName = "";
+//    var sEepNum = sEep.TrimStart('S').Split('E');
+//    var cleanFilename = filename.TrimEnd('.').Replace('.', ' ');
+//    var searchResults = tmdb.SearchTvShowAsync(cleanFilename).Result;
+//    foreach (var item in searchResults.Results)
+//    {
+//        if (!item.Name.ToLower().Equals(cleanFilename.ToLower())) continue;
+//        var uri =
+//            $"https://api.themoviedb.org/3/tv/{item.Id}/season/{sEepNum[0]}/episode/{sEepNum[1]}?api_key={tmdBapikey}";
+//        var client = new RestClient(uri);
+//        var request = new RestRequest { Method = Method.GET };
+//        request.AddHeader("Accept", "application/json");
+//        request.Parameters.Clear();
+//        var response = client.Execute(request);
+//        if (response.StatusCode != HttpStatusCode.OK) break;
+//        var deserializeObjectJson = JsonConvert.DeserializeObject(response.Content);
+//        var token = JObject.Parse(deserializeObjectJson.ToString());
+//        var result = token.SelectToken("name").Value<string>();
+//        var delimitersStrings = new[] { "-", "_", "+", "." };
+//        var isDelimiter = delimitersStrings.Any(delimit => result.Contains(delimit));
+
+//        epName = isDelimiter ? result.Replace(" ", string.Empty) +"." : result.Replace(" ", ".") + ".";
+//        break;
+//    }
+//    newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + year + sEep + epName + format + startwith + group + ext;
+//}
+//else if (Matches.FourRegex.IsMatch(tmpFile))
+//{
+//    const string yPattern = @"^(19|20)[0-9][0-9]";
+//    const string s3Pattern = @"\b\d{3}\b";
+//    const string s4Pattern = @"\b\d{4}\b";
+//    var tmpRegex = new Regex("(19|20)[0-9][0-9].*");
+//    var filename = tmpRegex.Replace(tmpFile, string.Empty);
+//    if (filename.EndsWith(".")) filename = filename.Substring(0, filename.Length - 1);
+//    tmpFile = tmpFile.Substring(filename.Length + 1).ToLower();
+//    var yRegex = Regex.Match(tmpFile, yPattern);
+//    var year = yRegex.Value.ToLower();
+//    if (year.Length > 0)
+//        year += ".";
+//    tmpFile = tmpFile.Substring(year.Length);
+//    var sRegex = Regex.Match(tmpFile, s3Pattern);
+//    if (!sRegex.Success) sRegex = Regex.Match(tmpFile, s4Pattern);
+//    var sEep = sRegex.Value.ToLower();
+//    var sEepSize = sEep.Length;
+//    if (sEepSize != 0)
+//        sEep = sEepSize > 3 ? "S" + sEep.Substring(0, 2) + "E" + sEep.Substring(2) + "." : "S0" + sEep.Substring(0, 1) + "E" + sEep.Substring(1) + ".";
+//    tmpFile = tmpFile.Substring(sEepSize);
+//    tmpFile = tmpFile.StartsWith(".") ? tmpFile.Substring(1) : tmpFile;
+//    format = SearchMatch(tmpFile, Matches.FormatRegex.ToString());
+//    var fDict = Matches.FormatList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
+//    format = Regex.Replace(format.ToUpper(), @"\b.+?\b", x =>
+//    {
+//        string replace;
+//        fDict.TryGetValue(x.Value, out replace);
+//        return replace ?? x.Value;
+//    });
+//    var fMatch = Regex.Match(format, "(X|H)?(264|265)");
+//    var mc = fMatch.Value;
+//    format = Regex.Replace(format, mc, mc.ToLower());
+//    tmpFile = tmpFile.Substring(format.Length);
+//    var startwith = @"";
+//    if (tmpFile.StartsWith("-"))
+//    {
+//        startwith = @"-";
+//        tmpFile = tmpFile.Substring(1);
+//    }
+//    else if (tmpFile.StartsWith("."))
+//    {
+//        startwith = @".";
+//        tmpFile = tmpFile.Substring(1);
+//    }
+//    group = SearchMatch(tmpFile, Matches.GroupRegex.ToString());
+//    var gDict = Matches.GroupList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
+//    group = Regex.Replace(group, @"[^\>]*", x =>
+//    {
+//        var tmp = x.Value.StartsWith("-") ? x.Value.Substring(1) : x.Value;
+//        string replace;
+//        gDict.TryGetValue(tmp, out replace);
+//        return replace ?? tmp;
+//    });
+//    var epName = "";
+//    var sEepNum = sEep.TrimStart('S').Split('E');
+//    var cleanFilename = filename.TrimEnd('.').Replace('.', ' ');
+//    var searchResults = tmdb.SearchTvShowAsync(cleanFilename).Result;
+//    foreach (var item in searchResults.Results)
+//    {
+//        if (!item.Name.ToLower().Equals(cleanFilename.ToLower())) continue;
+//        var uri =
+//            $"https://api.themoviedb.org/3/tv/{item.Id}/season/{sEepNum[0]}/episode/{sEepNum[1]}?api_key={tmdBapikey}";
+//        var client = new RestClient(uri);
+//        var request = new RestRequest { Method = Method.GET };
+//        request.AddHeader("Accept", "application/json");
+//        request.Parameters.Clear();
+//        var response = client.Execute(request);
+//        var deserializeObjectJson = JsonConvert.DeserializeObject(response.Content);
+//        var token = JObject.Parse(deserializeObjectJson.ToString());
+//        var result = token.SelectToken("name").Value<string>();
+//        var delimitersStrings = new[] { "-", "_", "+", "." };
+//        var isDelimiter = delimitersStrings.Any(delimit => result.Contains(delimit));
+
+//        epName = isDelimiter ? result.Replace(" ", string.Empty) : result.Replace(" ", ".");
+//        break;
+//    }
+//    newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + year + sEep + epName + format + startwith + group + ext;
+
+//}
+//else if (Matches.MorethenfourRegex.IsMatch(tmpFile))
+//{
+//    const string m4Pattern = @"\b\d{5,10}\b";
+//    var tmpRegex = new Regex(@"\b\d{5,10}\b.*");
+//    var filename = tmpRegex.Replace(tmpFile, string.Empty);
+//    if (filename.EndsWith(".")) filename = filename.Substring(0, filename.Length - 1);
+//    tmpFile = tmpFile.Substring(filename.Length + 1).ToLower();
+
+//    var sRegex = Regex.Match(tmpFile, m4Pattern);
+//    var sEep = sRegex.Value.ToLower();
+//    var sEepSize = sEep.Length;
+//    if (sEepSize != 0)
+//        sEep = "S0" + sEep.Substring(0, 1) + "E" + sEep.Substring(1) + ".";
+//    tmpFile = tmpFile.Substring(sEepSize);
+//    tmpFile = tmpFile.StartsWith(".") ? tmpFile.Substring(1) : tmpFile;
+//    format = SearchMatch(tmpFile, Matches.FormatRegex.ToString());
+//    var fDict = Matches.FormatList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
+//    format = Regex.Replace(format.ToUpper(), @"\b.+?\b", x =>
+//    {
+//        string replace;
+//        fDict.TryGetValue(x.Value, out replace);
+//        return replace ?? x.Value;
+//    });
+//    var fMatch = Regex.Match(format, "(X|H)?(264|265)");
+//    var mc = fMatch.Value;
+//    format = Regex.Replace(format, mc, mc.ToLower());
+//    tmpFile = tmpFile.Substring(format.Length);
+//    var startwith = @"";
+//    if (tmpFile.StartsWith("-"))
+//    {
+//        startwith = @"-";
+//        tmpFile = tmpFile.Substring(1);
+//    }
+//    else if (tmpFile.StartsWith("."))
+//    {
+//        startwith = @".";
+//        tmpFile = tmpFile.Substring(1);
+//    }
+//    group = SearchMatch(tmpFile, Matches.GroupRegex.ToString());
+//    var gDict = Matches.GroupList.ToDictionary(x => x, StringComparer.CurrentCultureIgnoreCase);
+//    group = Regex.Replace(group, @"[^\>]*", x =>
+//    {
+//        var tmp = x.Value.StartsWith("-") ? x.Value.Substring(1) : x.Value;
+//        string replace;
+//        gDict.TryGetValue(tmp, out replace);
+//        return replace ?? tmp;
+//    });
+//    var epName = "";
+//    var sEepNum = sEep.TrimStart('S').Split('E');
+//    var cleanFilename = filename.TrimEnd('.').Replace('.', ' ');
+//    var searchResults = tmdb.SearchTvShowAsync(cleanFilename).Result;
+//    foreach (var item in searchResults.Results)
+//    {
+//        if (!item.Name.ToLower().Equals(cleanFilename.ToLower())) continue;
+//        var uri =
+//            $"https://api.themoviedb.org/3/tv/{item.Id}/season/{sEepNum[0]}/episode/{sEepNum[1]}?api_key={tmdBapikey}";
+//        var client = new RestClient(uri);
+//        var request = new RestRequest { Method = Method.GET };
+//        request.AddHeader("Accept", "application/json");
+//        request.Parameters.Clear();
+//        var response = client.Execute(request);
+//        var deserializeObjectJson = JsonConvert.DeserializeObject(response.Content);
+//        var token = JObject.Parse(deserializeObjectJson.ToString());
+//        var result = token.SelectToken("name").Value<string>();
+//        var delimitersStrings = new[] { "-", "_", "+", "." };
+//        var isDelimiter = delimitersStrings.Any(delimit => result.Contains(delimit));
+
+//        epName = isDelimiter ? result.Replace(" ", string.Empty) : result.Replace(" ", ".");
+//        break;
+//    }
+//    newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(filename) + "." + sEep + epName + '.' + format + startwith + group + ext;
+
+//}

@@ -560,6 +560,7 @@ namespace VideoRenamer
             ServicePointManager.Expect100Continue = true;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             var downloadUrl = @"";
+            XElement change = null;
             Version newVersion = null;
             var xmlUrl = @"https://oribenhur.github.io/update.xml";
             Version appVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
@@ -575,6 +576,7 @@ namespace VideoRenamer
                     if (urlelEment == null) continue;
                     newVersion = new Version(versionElement.Value);
                     downloadUrl = urlelEment.Value;
+                    change = dm.Element(@"change_log");
 
                 }
             }
@@ -585,8 +587,11 @@ namespace VideoRenamer
 
             if (appVersion.CompareTo(newVersion) < 0)
             {
+                if (change == null) return;
+                change.Value = change.Value;
                 var result = MessageBox.Show(
-                    $@"{appName} v.{newVersion} is out!{Environment.NewLine}Would You Like To Download It?", @"New Version is available", MessageBoxButtons.YesNo);
+                    $@"{appName.Replace('_', ' ')} v.{newVersion} is out!{Environment.NewLine}{change.Value}",
+                    @"New Version is available", MessageBoxButtons.YesNo);
                 if (result == DialogResult.Yes)
                     System.Diagnostics.Process.Start(downloadUrl);
             }

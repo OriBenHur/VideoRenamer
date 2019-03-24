@@ -12,21 +12,9 @@ namespace VideoRenamer
             InitializeComponent();
         }
 
-        private string _id;
+        public string MyId { get; set; }
 
-        public string MyId
-        {
-            get { return _id; }
-            set { _id = value; }
-        }
-
-        private string _title;
-
-        public string MyTitle
-        {
-            get { return _title; }
-            set { _title = value; }
-        }
+        public string MyTitle { get; set; }
         public void AddLabeles(string link, string lable, int x, int y)
         {
             var tmpLable = new LinkLabel();
@@ -72,8 +60,8 @@ namespace VideoRenamer
 
         private void MsgBox_Load(object sender, EventArgs e)
         {
-            Text = $@"{_title} Conflicts";
-            label1.Text = $@"Witch {_title} is the correct one?";
+            Text = $@"{MyTitle} Conflicts";
+            label1.Text = $@"{MyTitle}, Choose the right one.";
 
         }
 
@@ -81,9 +69,7 @@ namespace VideoRenamer
         {
             foreach (var control in container.Controls)
             {
-                RadioButton radio = control as RadioButton;
-
-                if (radio != null && radio.Checked)
+                if (control is RadioButton radio && radio.Checked)
                 {
                     return radio;
                 }

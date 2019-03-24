@@ -23,6 +23,8 @@ namespace VideoRenamer
             InitializeComponent();
         }
 
+
+
         private void VideoRenamer_Load(object sender, EventArgs e)
         {
             var width = listView.Size.Width - 52;
@@ -53,6 +55,7 @@ namespace VideoRenamer
         }
 
         private static Dictionary<string, string> _matches = new Dictionary<string, string>();
+        private static Dictionary<string, string> _mark = new Dictionary<string, string>();
 
         //private bool _load = true;
         private void openFolderToolStripMenuItem_Click(object sender, EventArgs e)
@@ -94,12 +97,12 @@ namespace VideoRenamer
             //_load = false;
         }
 
-/*
-        private static bool TestWord(string file, Regex filter)
-        {
-            return filter.IsMatch(file);
-        }
-*/
+        /*
+                private static bool TestWord(string file, Regex filter)
+                {
+                    return filter.IsMatch(file);
+                }
+        */
 
         private static string SearchMatch(string input, string pattern)
         {
@@ -147,7 +150,7 @@ namespace VideoRenamer
             //return _list;
         }
 
-        private static string ProcessNewName(string name)
+        private string ProcessNewName(string name)
         {
             var apiKeys = new ApiKeys();
             var original = Path.GetFileName(name);
@@ -159,30 +162,25 @@ namespace VideoRenamer
 
             if (tmpFile != null)
             {
-                //string format;
-                //string group;
                 tmpFile = tmpFile.EndsWith(".") ? tmpFile.Substring(0, tmpFile.Length - 1) : tmpFile;
                 var index = 0;
                 var title = extract_Title(tmpFile);
                 index += title.Length;
                 var year = GetYear(tmpFile.Substring(index));
                 index += year.Length;
-                var sEep = extract_seEp(tmpFile.Substring(index));
-                index += sEep.Length;
+                var sEepObj = extract_seEp(tmpFile.Substring(index));
+                var sEep = (string)sEepObj[0];
+                index += (int)sEepObj[1];
                 var format = extract_Format(tmpFile.Substring(index));
                 index += format.Length;
                 var group = extract_Group(tmpFile.Substring(index));
-                //index += group.Length;
-                //var tmpString = tmpFile.LastIndexOf(format, StringComparison.OrdinalIgnoreCase);
                 var startWith = extract_startWite(tmpFile.Substring(index));
                 var epName = GetEpName(title.TrimEnd('.').Replace(".", " "), tmdb, sEep, year);
-                //newName = original != null && original.ToLower().Contains(epName.ToLower()) ? original : CultureInfo.CurrentCulture.TextInfo.ToTitleCase(title) + year + sEep + epName + format + startWith + group + ext;
-
                 if (original != null && !string.IsNullOrEmpty(epName) && original.ToLower().Contains(epName.ToLower()))
                     newName = original;
                 else
                     newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(title) + year + sEep + epName + format + startWith + group + ext;
-                
+
 
 
             }
@@ -197,7 +195,7 @@ namespace VideoRenamer
             return newName;
         }
 
-        private static dynamic GetJson(string uri)
+        private dynamic GetJson(string uri)
         {
             var client = new RestClient(uri);
             var request = new RestRequest { Method = Method.GET };
@@ -208,12 +206,18 @@ namespace VideoRenamer
             return JsonConvert.DeserializeObject<dynamic>(response.Content);
             //return deserializeObjectJson.results;
         }
-        private static string GetEpName(string title, TMDbClient tmdb, string seEp = "", string year = "0")
+        private string GetEpName(string title, TMDbClient tmdb, string seEp = "", string year = "0")
         {
+            if (_mark.ContainsValue(CultureInfo.CurrentCulture.TextInfo.ToTitleCase(title)))
+            {
+                var tmpYear = (_mark.FirstOrDefault(z => z.Value.ToLower().Equals(title)).Key).Split('-');
+                year = tmpYear[0];
+            }
+               
             var potential = new List<dynamic>();
             var sEepNum = seEp.ToUpper().TrimEnd('.').TrimStart('S').Split('E');
             if (string.IsNullOrEmpty(seEp)) return "";
-            var tvUri = $"https://api.themoviedb.org/3/search/tv?api_key={tmdb.ApiKey}&language=en-US&query={title}&page=1&first_air_date_year={year}";
+            var tvUri = $@"https://api.themoviedb.org/3/search/tv?api_key={tmdb.ApiKey}&language=en-US&query={title}&page=1&first_air_date_year={year}";
             var response = GetJson(tvUri);
             foreach (var result in response.results)
             {
@@ -222,9 +226,9 @@ namespace VideoRenamer
                     potential.Add(result);
                 }
             }
-            if (potential.Count == 1)
+            if (potential.Count == 1 || AndroidStyleToggleSwitch.Checked)
             {
-                var uri = $"https://api.themoviedb.org/3/tv/{potential[0].id}/season/{sEepNum[0]}/episode/{sEepNum[1]}?api_key={tmdb.ApiKey}";
+                var uri = $@"https://api.themoviedb.org/3/tv/{potential[0].id}/season/{sEepNum[0]}/episode/{sEepNum[1]}?api_key={tmdb.ApiKey}";
                 var tvJson = GetJson(uri);
                 var delimitersStrings = new[] { "-", "_", "+", "." };
                 var isDelimiter = delimitersStrings.Any(delimit => ((string)tvJson.name).Contains(delimit));
@@ -241,23 +245,23 @@ namespace VideoRenamer
             foreach (var potentialItem in potential)
             {
                 var id = (int)potentialItem.id;
-                var imdbId = (string)tmdb.GetTvShowAsync(id, TvShowMethods.ExternalIds).Result.ExternalIds.ImdbId;
-                msg.AddLabeles(imdburl + imdbId, (string)potentialItem.original_name + " (" + (string)potentialItem.first_air_date + ")", x, y);
+                var imdbId = $@"{tmdb.GetTvShowAsync(id, TvShowMethods.ExternalIds).Result.ExternalIds.ImdbId}";
+                msg.AddLabeles(imdburl + imdbId, $@"{(string)potentialItem.original_name} ({(string)potentialItem.first_air_date})", x, y);
                 y += 20;
             }
-            msg.MyTitle = title;
+            msg.MyTitle = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(title);
             msg.ShowDialog();
             foreach (var selected in potential)
             {
                 var imdbId = tmdb.GetTvShowAsync(((int)selected.id), TvShowMethods.ExternalIds).Result.ExternalIds.ImdbId;
                 if (!imdbId.Equals(msg.MyId)) continue;
-                var uri = $"https://api.themoviedb.org/3/tv/{potential[0].id}/season/{sEepNum[0]}/episode/{sEepNum[1]}?api_key={tmdb.ApiKey}";
+                var uri = $@"https://api.themoviedb.org/3/tv/{potential[0].id}/season/{sEepNum[0]}/episode/{sEepNum[1]}?api_key={tmdb.ApiKey}";
                 var tvJson = GetJson(uri);
                 //return tvJson.name;
                 var delimitersStrings = new[] { "-", "_", "+", "." };
                 var isDelimiter = delimitersStrings.Any(delimit => ((string)tvJson.name).Contains(delimit));
+                _mark.Add((string)selected.first_air_date, (string)selected.original_name);
                 return isDelimiter ? ((string)tvJson.name).Replace(" ", string.Empty) + "." : ((string)tvJson.name).Replace(" ", ".") + ".";
-
             }
 
             return "";
@@ -305,7 +309,7 @@ namespace VideoRenamer
         }
 
 
-        private static string extract_seEp(string tmpFile)
+        private static object[] extract_seEp(string tmpFile)
         {
             foreach (var match in Matches.seEp_dic)
             {
@@ -321,7 +325,9 @@ namespace VideoRenamer
                                 var sEep = epRegex.Value;
                                 var sEepSize = sEep.Length;
                                 if (sEepSize != 0)
-                                    return sEep.ToUpper() + ".";
+                                    return new object[] { sEep.ToUpper() + ".", 7 };
+
+
                             }
                             break;
 
@@ -339,7 +345,8 @@ namespace VideoRenamer
                                 ep = ep.Replace("x", "");
                                 ep = epSize > 0 && ep.Length < 2 ? "E0" + ep : "E" + ep;
                                 if (se.Length > 0 && ep.Length > 0)
-                                    return se + ep + ".";
+                                    //return se + ep + ".";
+                                    return new object[] {  se + ep + ".", sRegex.Value.Length + _epRegex.Value.Length};
                             }
                             break;
 
@@ -358,8 +365,8 @@ namespace VideoRenamer
                                 var sEepSize = sEep.Length;
                                 if (sEepSize != 0)
                                     return sEepSize > 3
-                                        ? "S" + sEep.Substring(0, 2) + "E" + sEep.Substring(2) + "."
-                                        : "S0" + sEep.Substring(0, 1) + "E" + sEep.Substring(1) + ".";
+                                        ? new object[] { "S" + sEep.Substring(0, 2) + "E" + sEep.Substring(2) + ".", 5 }
+                                        : new object [] { "S0" + sEep.Substring(0, 1) + "E" + sEep.Substring(1) + ".", 4 };
 
                             }
                             break;
@@ -375,17 +382,17 @@ namespace VideoRenamer
                                 var sEep = sRegex.Value.ToLower();
                                 var sEepSize = sEep.Length;
                                 if (sEepSize != 0)
-                                    return "S0" + sEep.Substring(0, 1) + "E" + sEep.Substring(1) + ".";
+                                    return new object[] { "S0" + sEep.Substring(0, 1) + "E" + sEep.Substring(1) + ".", 3 };
                             }
                             break;
                         default:
-                            return "";
+                            return new object[]{"",0};
 
                     }
                 }
             }
 
-            return "";
+            return new object[] {"",0};
 
         }
 
@@ -413,7 +420,7 @@ namespace VideoRenamer
 
         private void ProcessName(string name)
         {
-            
+
             var i = listView.Items.Count;
             var original = Path.GetFileName(name);
             var directoryName = Path.GetDirectoryName(name);

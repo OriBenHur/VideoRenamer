@@ -39,6 +39,8 @@
             this.All_checkBox = new System.Windows.Forms.CheckBox();
             this.Rename_button = new System.Windows.Forms.Button();
             this.CheckForUpdates = new System.ComponentModel.BackgroundWorker();
+            this.AndroidStyleToggleSwitch = new JCS.ToggleSwitch();
+            this.AutoMode = new System.Windows.Forms.Label();
             this.menuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -49,7 +51,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.listView.Location = new System.Drawing.Point(0, 28);
             this.listView.Name = "listView";
-            this.listView.Size = new System.Drawing.Size(617, 346);
+            this.listView.Size = new System.Drawing.Size(617, 350);
             this.listView.TabIndex = 0;
             this.listView.UseCompatibleStateImageBehavior = false;
             this.listView.ItemChecked += new System.Windows.Forms.ItemCheckedEventHandler(this.listView_ItemChecked);
@@ -129,7 +131,7 @@
             // Rename_button
             // 
             this.Rename_button.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.Rename_button.Location = new System.Drawing.Point(533, 379);
+            this.Rename_button.Location = new System.Drawing.Point(533, 384);
             this.Rename_button.Name = "Rename_button";
             this.Rename_button.Size = new System.Drawing.Size(75, 23);
             this.Rename_button.TabIndex = 3;
@@ -141,11 +143,41 @@
             // 
             this.CheckForUpdates.DoWork += new System.ComponentModel.DoWorkEventHandler(this.CheckForUpdates_DoWork);
             // 
+            // AndroidStyleToggleSwitch
+            // 
+            this.AndroidStyleToggleSwitch.Size = new System.Drawing.Size(78, 23);
+            this.AndroidStyleToggleSwitch.Style = JCS.ToggleSwitch.ToggleSwitchStyle.Android;
+            this.AndroidStyleToggleSwitch.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.AndroidStyleToggleSwitch.Location = new System.Drawing.Point(92, 384);
+            this.AndroidStyleToggleSwitch.Name = "AndroidStyleToggleSwitch";
+            this.AndroidStyleToggleSwitch.OffForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(141)))), ((int)(((byte)(123)))), ((int)(((byte)(141)))));
+            this.AndroidStyleToggleSwitch.OffText = "OFF";
+            this.AndroidStyleToggleSwitch.OnFont = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Bold);
+            this.AndroidStyleToggleSwitch.OnForeColor = System.Drawing.Color.White;
+            this.AndroidStyleToggleSwitch.OnText = "ON";
+            
+            this.AndroidStyleToggleSwitch.TabIndex = 4;
+            this.AndroidStyleToggleSwitch.UseAnimation = true; //Default
+            this.AndroidStyleToggleSwitch.AnimationInterval = 10; //Default
+            this.AndroidStyleToggleSwitch.AnimationStep = 3; //Default
+            // 
+            // AutoMode
+            // 
+            this.AutoMode.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.AutoMode.AutoSize = true;
+            this.AutoMode.Location = new System.Drawing.Point(13, 389);
+            this.AutoMode.Name = "AutoMode";
+            this.AutoMode.Size = new System.Drawing.Size(79, 13);
+            this.AutoMode.TabIndex = 5;
+            this.AutoMode.Text = "Assume Latest:";
+            // 
             // VideoRenamer
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(618, 406);
+            this.ClientSize = new System.Drawing.Size(618, 417);
+            this.Controls.Add(this.AutoMode);
+            this.Controls.Add(this.AndroidStyleToggleSwitch);
             this.Controls.Add(this.Rename_button);
             this.Controls.Add(this.All_checkBox);
             this.Controls.Add(this.listView);
@@ -175,6 +207,8 @@
         private System.Windows.Forms.ToolStripMenuItem checkForUpdatesToolStripMenuItem;
         private System.Windows.Forms.Button Rename_button;
         private System.ComponentModel.BackgroundWorker CheckForUpdates;
+        private JCS.ToggleSwitch AndroidStyleToggleSwitch;
+        private System.Windows.Forms.Label AutoMode;
     }
 }
 

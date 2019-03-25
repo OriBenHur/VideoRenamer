@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(VideoRenamer));
             this.listView = new System.Windows.Forms.ListView();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -39,8 +40,8 @@
             this.All_checkBox = new System.Windows.Forms.CheckBox();
             this.Rename_button = new System.Windows.Forms.Button();
             this.CheckForUpdates = new System.ComponentModel.BackgroundWorker();
-            this.AndroidStyleToggleSwitch = new JCS.ToggleSwitch();
             this.AutoMode = new System.Windows.Forms.Label();
+            this.AndroidStyleToggleSwitch = new JCS.ToggleSwitch();
             this.menuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -54,7 +55,11 @@
             this.listView.Size = new System.Drawing.Size(617, 350);
             this.listView.TabIndex = 0;
             this.listView.UseCompatibleStateImageBehavior = false;
+            this.listView.ColumnClick += new System.Windows.Forms.ColumnClickEventHandler(this.listView_ColumnClick);
+            this.listView.ColumnWidthChanging += new System.Windows.Forms.ColumnWidthChangingEventHandler(this.listView_ColumnWidthChanging);
             this.listView.ItemChecked += new System.Windows.Forms.ItemCheckedEventHandler(this.listView_ItemChecked);
+            this.listView.KeyDown += new System.Windows.Forms.KeyEventHandler(this.listView_KeyDown);
+            this.listView.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.listView_MouseDoubleClick);
             this.listView.Resize += new System.EventHandler(this.listView_Resize);
             // 
             // menuStrip1
@@ -143,24 +148,6 @@
             // 
             this.CheckForUpdates.DoWork += new System.ComponentModel.DoWorkEventHandler(this.CheckForUpdates_DoWork);
             // 
-            // AndroidStyleToggleSwitch
-            // 
-            this.AndroidStyleToggleSwitch.Size = new System.Drawing.Size(78, 23);
-            this.AndroidStyleToggleSwitch.Style = JCS.ToggleSwitch.ToggleSwitchStyle.Android;
-            this.AndroidStyleToggleSwitch.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.AndroidStyleToggleSwitch.Location = new System.Drawing.Point(92, 384);
-            this.AndroidStyleToggleSwitch.Name = "AndroidStyleToggleSwitch";
-            this.AndroidStyleToggleSwitch.OffForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(141)))), ((int)(((byte)(123)))), ((int)(((byte)(141)))));
-            this.AndroidStyleToggleSwitch.OffText = "OFF";
-            this.AndroidStyleToggleSwitch.OnFont = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Bold);
-            this.AndroidStyleToggleSwitch.OnForeColor = System.Drawing.Color.White;
-            this.AndroidStyleToggleSwitch.OnText = "ON";
-            
-            this.AndroidStyleToggleSwitch.TabIndex = 4;
-            this.AndroidStyleToggleSwitch.UseAnimation = true; //Default
-            this.AndroidStyleToggleSwitch.AnimationInterval = 10; //Default
-            this.AndroidStyleToggleSwitch.AnimationStep = 3; //Default
-            // 
             // AutoMode
             // 
             this.AutoMode.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
@@ -170,6 +157,23 @@
             this.AutoMode.Size = new System.Drawing.Size(79, 13);
             this.AutoMode.TabIndex = 5;
             this.AutoMode.Text = "Assume Latest:";
+            // 
+            // AndroidStyleToggleSwitch
+            // 
+            this.AndroidStyleToggleSwitch.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.AndroidStyleToggleSwitch.AnimationInterval = 10;
+            this.AndroidStyleToggleSwitch.AnimationStep = 3;
+            this.AndroidStyleToggleSwitch.Location = new System.Drawing.Point(92, 384);
+            this.AndroidStyleToggleSwitch.Name = "AndroidStyleToggleSwitch";
+            this.AndroidStyleToggleSwitch.OffFont = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.AndroidStyleToggleSwitch.OffForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(141)))), ((int)(((byte)(123)))), ((int)(((byte)(141)))));
+            this.AndroidStyleToggleSwitch.OffText = "OFF";
+            this.AndroidStyleToggleSwitch.OnFont = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Bold);
+            this.AndroidStyleToggleSwitch.OnForeColor = System.Drawing.Color.White;
+            this.AndroidStyleToggleSwitch.OnText = "ON";
+            this.AndroidStyleToggleSwitch.Size = new System.Drawing.Size(78, 23);
+            this.AndroidStyleToggleSwitch.Style = JCS.ToggleSwitch.ToggleSwitchStyle.Android;
+            this.AndroidStyleToggleSwitch.TabIndex = 4;
             // 
             // VideoRenamer
             // 
@@ -182,6 +186,7 @@
             this.Controls.Add(this.All_checkBox);
             this.Controls.Add(this.listView);
             this.Controls.Add(this.menuStrip1);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "VideoRenamer";
             this.Text = "VideoRenamer";

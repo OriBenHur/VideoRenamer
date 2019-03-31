@@ -29,7 +29,6 @@
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(VideoRenamer));
-            this.listView = new System.Windows.Forms.ListView();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.openFolderToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -37,30 +36,18 @@
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.settingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.checkForUpdatesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.All_checkBox = new System.Windows.Forms.CheckBox();
             this.Rename_button = new System.Windows.Forms.Button();
             this.CheckForUpdates = new System.ComponentModel.BackgroundWorker();
             this.AutoMode = new System.Windows.Forms.Label();
             this.AndroidStyleToggleSwitch = new JCS.ToggleSwitch();
+            this.olv1 = new BrightIdeasSoftware.ObjectListView();
+            this.index = ((BrightIdeasSoftware.OLVColumn)(new BrightIdeasSoftware.OLVColumn()));
+            this.oldName = ((BrightIdeasSoftware.OLVColumn)(new BrightIdeasSoftware.OLVColumn()));
+            this.outputName = ((BrightIdeasSoftware.OLVColumn)(new BrightIdeasSoftware.OLVColumn()));
+            this.checkBox = ((BrightIdeasSoftware.OLVColumn)(new BrightIdeasSoftware.OLVColumn()));
             this.menuStrip1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.olv1)).BeginInit();
             this.SuspendLayout();
-            // 
-            // listView
-            // 
-            this.listView.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.listView.Location = new System.Drawing.Point(0, 28);
-            this.listView.Name = "listView";
-            this.listView.Size = new System.Drawing.Size(617, 350);
-            this.listView.TabIndex = 0;
-            this.listView.UseCompatibleStateImageBehavior = false;
-            this.listView.ColumnClick += new System.Windows.Forms.ColumnClickEventHandler(this.listView_ColumnClick);
-            this.listView.ColumnWidthChanging += new System.Windows.Forms.ColumnWidthChangingEventHandler(this.listView_ColumnWidthChanging);
-            this.listView.ItemChecked += new System.Windows.Forms.ItemCheckedEventHandler(this.listView_ItemChecked);
-            this.listView.KeyDown += new System.Windows.Forms.KeyEventHandler(this.listView_KeyDown);
-            this.listView.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.listView_MouseDoubleClick);
-            this.listView.Resize += new System.EventHandler(this.listView_Resize);
             // 
             // menuStrip1
             // 
@@ -123,16 +110,6 @@
             this.checkForUpdatesToolStripMenuItem.Text = "Check For Updates";
             this.checkForUpdatesToolStripMenuItem.Click += new System.EventHandler(this.checkForUpdatesToolStripMenuItem_Click);
             // 
-            // All_checkBox
-            // 
-            this.All_checkBox.AutoSize = true;
-            this.All_checkBox.Location = new System.Drawing.Point(6, 36);
-            this.All_checkBox.Name = "All_checkBox";
-            this.All_checkBox.Size = new System.Drawing.Size(15, 14);
-            this.All_checkBox.TabIndex = 2;
-            this.All_checkBox.UseVisualStyleBackColor = true;
-            this.All_checkBox.CheckedChanged += new System.EventHandler(this.All_checkBox_CheckedChanged);
-            // 
             // Rename_button
             // 
             this.Rename_button.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
@@ -175,45 +152,120 @@
             this.AndroidStyleToggleSwitch.Style = JCS.ToggleSwitch.ToggleSwitchStyle.Android;
             this.AndroidStyleToggleSwitch.TabIndex = 4;
             // 
+            // olv1
+            // 
+            this.olv1.AllColumns.Add(this.checkBox);
+            this.olv1.AllColumns.Add(this.index);
+            this.olv1.AllColumns.Add(this.oldName);
+            this.olv1.AllColumns.Add(this.outputName);
+            this.olv1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.olv1.CellEditActivation = BrightIdeasSoftware.ObjectListView.CellEditActivateMode.DoubleClick;
+            this.olv1.CellEditUseWholeCell = false;
+            this.olv1.CheckBoxes = true;
+            this.olv1.CheckedAspectName = "";
+            this.olv1.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
+            this.checkBox,
+            this.index,
+            this.oldName,
+            this.outputName});
+            this.olv1.Cursor = System.Windows.Forms.Cursors.Default;
+            this.olv1.FullRowSelect = true;
+            this.olv1.HasCollapsibleGroups = false;
+            this.olv1.Location = new System.Drawing.Point(0, 27);
+            this.olv1.Name = "olv1";
+            this.olv1.ShowGroups = false;
+            this.olv1.Size = new System.Drawing.Size(618, 351);
+            this.olv1.TabIndex = 6;
+            this.olv1.UseCellFormatEvents = true;
+            this.olv1.UseCompatibleStateImageBehavior = false;
+            this.olv1.View = System.Windows.Forms.View.Details;
+            this.olv1.HeaderCheckBoxChanging += new System.EventHandler<BrightIdeasSoftware.HeaderCheckBoxChangingEventArgs>(this.olv1_HeaderCheckBoxChanging);
+            this.olv1.ItemChecked += new System.Windows.Forms.ItemCheckedEventHandler(this.olv1_ItemChecked);
+            // 
+            // index
+            // 
+            this.index.AspectName = "Index";
+            this.index.CellEditUseWholeCell = false;
+            this.index.FillsFreeSpace = true;
+            this.index.HeaderTextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            this.index.IsEditable = false;
+            this.index.MaximumWidth = 24;
+            this.index.MinimumWidth = 40;
+            this.index.Sortable = false;
+            this.index.Text = "#";
+            this.index.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            this.index.UseFiltering = false;
+            this.index.Width = 24;
+            // 
+            // oldName
+            // 
+            this.oldName.AspectName = "OldName";
+            this.oldName.IsEditable = false;
+            this.oldName.Sortable = false;
+            this.oldName.Text = "Original Name";
+            this.oldName.Width = 150;
+            // 
+            // outputName
+            // 
+            this.outputName.AspectName = "OutputName";
+            this.outputName.Sortable = false;
+            this.outputName.Text = "New Name";
+            this.outputName.Width = 150;
+            // 
+            // checkBox
+            // 
+            this.checkBox.AspectName = "CheckBox";
+            this.checkBox.ButtonSizing = BrightIdeasSoftware.OLVColumn.ButtonSizingMode.CellBounds;
+            this.checkBox.HeaderCheckBox = true;
+            this.checkBox.MaximumWidth = 26;
+            this.checkBox.MinimumWidth = 26;
+            this.checkBox.ShowTextInHeader = false;
+            this.checkBox.Text = "";
+            this.checkBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            this.checkBox.Width = 26;
+            // 
             // VideoRenamer
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(618, 417);
+            this.Controls.Add(this.olv1);
             this.Controls.Add(this.AutoMode);
             this.Controls.Add(this.AndroidStyleToggleSwitch);
             this.Controls.Add(this.Rename_button);
-            this.Controls.Add(this.All_checkBox);
-            this.Controls.Add(this.listView);
             this.Controls.Add(this.menuStrip1);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "VideoRenamer";
             this.Text = "VideoRenamer";
-            this.Load += new System.EventHandler(this.VideoRenamer_Load);
             this.Shown += new System.EventHandler(this.VideoRenamer_Shown);
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.olv1)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
         }
 
         #endregion
-
-        private System.Windows.Forms.ListView listView;
         private System.Windows.Forms.MenuStrip menuStrip1;
         private System.Windows.Forms.ToolStripMenuItem fileToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem openFolderToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem openFileToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem exitToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem settingsToolStripMenuItem;
-        private System.Windows.Forms.CheckBox All_checkBox;
         private System.Windows.Forms.ToolStripMenuItem checkForUpdatesToolStripMenuItem;
         private System.Windows.Forms.Button Rename_button;
         private System.ComponentModel.BackgroundWorker CheckForUpdates;
         private JCS.ToggleSwitch AndroidStyleToggleSwitch;
         private System.Windows.Forms.Label AutoMode;
+        private BrightIdeasSoftware.ObjectListView olv1;
+        private BrightIdeasSoftware.OLVColumn index;
+        private BrightIdeasSoftware.OLVColumn oldName;
+        private BrightIdeasSoftware.OLVColumn outputName;
+        private BrightIdeasSoftware.OLVColumn checkBox;
     }
 }
 

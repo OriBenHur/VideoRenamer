@@ -1,4 +1,7 @@
-﻿using System;
+﻿using BrightIdeasSoftware;
+using Newtonsoft.Json;
+using RestSharp;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
@@ -8,9 +11,7 @@ using System.Net;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using System.Xml.Linq;
-using Newtonsoft.Json;
 using TMDbLib.Client;
-using RestSharp;
 using TMDbLib.Objects.TvShows;
 
 
@@ -18,49 +19,49 @@ namespace VideoRenamer
 {
     public partial class VideoRenamer : Form
     {
-        private ListViewColumnSorter lvwColumnSorter = null;
+        private List<VideoItem> _items = new List<VideoItem>();
+        private class VideoItem
+        {
+            public string PlaceHolder;
+            public int Index;
+            public string OldName;
+            public string OutputName;
+            public string Dir;
+        }
+
         public VideoRenamer()
         {
             InitializeComponent();
 
-            lvwColumnSorter = new ListViewColumnSorter();
-            listView.ListViewItemSorter = lvwColumnSorter;
         }
 
 
 
-        private void VideoRenamer_Load(object sender, EventArgs e)
-        {
-            var width = listView.Size.Width - 52;
-            listView.View = View.Details;
-            listView.FullRowSelect = true;
-            listView.Columns.Add("", 24);
-            listView.Columns.Add("#", 24);
-            listView.Columns.Add("Original Name", width / 2);
-            listView.Columns.Add("New Name", width / 2);
-            listView.CheckBoxes = true;
-            // Ensure that the view is set to show details.
-            listView.View = View.Details;
-            // Loop through and size each column header to fit the column header text.
-            foreach (ColumnHeader ch in this.listView.Columns)
-            {
-                ch.Width = -2;
-            }
-        }
+        //private void VideoRenamer_Load(object sender, EventArgs e)
+        //{
+        //    var width = listView.Size.Width - 52;
+        //    listView.View = View.Details;
+        //    listView.FullRowSelect = true;
+        //    listView.Columns.Add("", 24);
+        //    listView.Columns.Add("#", 24);
+        //    listView.Columns.Add("Original Name", width / 2);
+        //    listView.Columns.Add("New Name", width / 2);
+        //    listView.CheckBoxes = true;
+        //    // Ensure that the view is set to show details.
+        //    listView.View = View.Details;
+        //    // Loop through and size each column header to fit the column header text.
+        //    foreach (ColumnHeader ch in this.listView.Columns)
+        //    {
+        //        ch.Width = -2;
+        //    }
+        //}
 
-        private void SizeLastColumn(ListView listview)
-        {
-            var width = listView.Size.Width - 52;
-            listview.Columns[2].Width = width / 2;
-            listview.Columns[3].Width = width / 2;
-        }
-
-        private void listView_Resize(object sender, EventArgs e)
-        {
-            SizeLastColumn((ListView)sender);
-        }
-
-
+        //private void SizeLastColumn(ListView listview)
+        //{
+        //    var width = listView.Size.Width - 52;
+        //    listview.Columns[2].Width = width / 2;
+        //    listview.Columns[3].Width = width / 2;
+        //}
 
         private static IEnumerable<string> Filtered_List(IList<string> list)
         {
@@ -69,20 +70,32 @@ namespace VideoRenamer
 
         private static Dictionary<string, string> _matches = new Dictionary<string, string>();
         private static Dictionary<string, string> _mark = new Dictionary<string, string>();
+        private readonly List<string> _list = new List<string>();
 
         //private bool _load = true;
         private void openFolderToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //_load = true;
-            listView.Items.Clear();
+            olv1.ClearObjects();
             _matches.Clear();
+            _items.Clear();
             var fs = new FolderSelectDialog();
             var result = fs.ShowDialog();
-            if (!result) return;
-            if (!Directory.Exists(fs.FileName)) return;
+            if (!result)
+            {
+                return;
+            }
+
+            if (!Directory.Exists(fs.FileName))
+            {
+                return;
+            }
+
             var allfiles = Filtered_List(GetFiles(fs.FileName, "*.*"));
             foreach (var name in allfiles)
+            {
                 ProcessName(name);
+            }
             //All_checkBox.Checked = true;
             //_load = false;
 
@@ -103,10 +116,16 @@ namespace VideoRenamer
 
             };
             var result = fs.ShowDialog();
-            if (result != DialogResult.OK) return;
+            if (result != DialogResult.OK)
+            {
+                return;
+            }
+
             var fileName = fs.FileNames;
             foreach (var name in fileName)
+            {
                 ProcessName(name);
+            }
             //_load = false;
         }
 
@@ -136,7 +155,10 @@ namespace VideoRenamer
             try
             {
                 files.AddRange(Directory.GetFiles(path, pattern, SearchOption.TopDirectoryOnly));
-                foreach (var directory in Directory.GetDirectories(path)) files.AddRange(GetFiles(directory, pattern));
+                foreach (var directory in Directory.GetDirectories(path))
+                {
+                    files.AddRange(GetFiles(directory, pattern));
+                }
             }
             catch
             {
@@ -146,12 +168,11 @@ namespace VideoRenamer
             return files;
         }
 
-        private readonly List<string> _list = new List<string>();
-        private void ReName(string original, string newName)
+        private void ReName(string original, string output)
         {
             try
             {
-                File.Move(original, newName);
+                File.Move(original, output);
 
             }
             catch (Exception)
@@ -176,31 +197,41 @@ namespace VideoRenamer
             if (tmpFile != null)
             {
                 tmpFile = tmpFile.EndsWith(".") ? tmpFile.Substring(0, tmpFile.Length - 1) : tmpFile;
-                var index = 0;
+                var j = 0;
                 var title = GetTitle(tmpFile);
-                index += title.Length;
-                var year = GetYear(tmpFile.Substring(index));
-                index += year.Length;
-                var sEepObj = GetSeEp(tmpFile.Substring(index));
+                j += title.Length;
+                var year = GetYear(tmpFile.Substring(j));
+                j += year.Length;
+                var sEepObj = GetSeEp(tmpFile.Substring(j));
                 var sEep = (string)sEepObj[0];
-                index += (int)sEepObj[1];
-                var format = GetFormat(tmpFile.Substring(index));
-                index += format.Length;
-                var group = GetGroup(tmpFile.Substring(index));
-                var startWith = GetStartWite(tmpFile.Substring(index));
+                j += (int)sEepObj[1];
+                var format = GetFormat(tmpFile.Substring(j));
+                j += format.Length;
+                var group = GetGroup(tmpFile.Substring(j));
+                var startWith = GetStartWite(tmpFile.Substring(j));
                 var epName = GetEpName(title.TrimEnd('.').Replace(".", " "), tmdb, sEep, year);
                 if (original != null && !string.IsNullOrEmpty(epName) && original.ToLower().Contains(epName.ToLower()))
+                {
                     newName = original;
+                }
                 else
+                {
                     newName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(title) + year + sEep + epName + format + startWith + group + ext;
+                }
             }
 
             var match = Regex.Match(newName, "(X|H)?(264|265)");
             var ma = match.Value;
             newName = Regex.Replace(newName, ma, ma.ToLower());
             if (newName.Contains("HDTV") && !newName.Contains("XviD") && !Regex.IsMatch(newName, "([xX]|[hH])?(264|265)"))
+            {
                 newName = newName.Replace("HDTV", "HDTV.x264");
-            if (original != null) _matches.Add(original, newName);
+            }
+
+            if (original != null)
+            {
+                _matches.Add(original, newName);
+            }
 
             return newName;
         }
@@ -216,17 +247,32 @@ namespace VideoRenamer
             return JsonConvert.DeserializeObject<dynamic>(response.Content);
             //return deserializeObjectJson.results;
         }
+
         private string GetEpName(string title, TMDbClient tmdb, string seEp = "", string year = "0")
         {
             if (_mark.ContainsValue(CultureInfo.CurrentCulture.TextInfo.ToTitleCase(title)))
             {
-                var tmpYear = _mark.FirstOrDefault(z => z.Value.ToLower().Equals(title)).Key.Split('-');
+                KeyValuePair<string, string> first = new KeyValuePair<string, string>();
+                foreach (var z in _mark)
+                {
+                    if (z.Value.ToLower().Equals(title.ToLower()))
+                    {
+                        first = z;
+                        break;
+                    }
+                }
+
+                var tmpYear = first.Key.Split('-');
                 year = tmpYear[0];
             }
 
             var potential = new List<dynamic>();
             var sEepNum = seEp.ToUpper().TrimEnd('.').TrimStart('S').Split('E');
-            if (string.IsNullOrEmpty(seEp)) return "";
+            if (string.IsNullOrEmpty(seEp))
+            {
+                return "";
+            }
+
             var tvUri = $@"https://api.themoviedb.org/3/search/tv?api_key={tmdb.ApiKey}&language=en-US&query={title}&page=1&first_air_date_year={year}";
             var response = GetJson(tvUri);
             foreach (var result in response.results)
@@ -246,7 +292,10 @@ namespace VideoRenamer
 
             }
 
-            if (potential.Count == 0) return "";
+            if (potential.Count == 0)
+            {
+                return "";
+            }
 
             var msg = new MsgBox();
             const string imdburl = "http://www.imdb.com/title/";
@@ -264,7 +313,11 @@ namespace VideoRenamer
             foreach (var selected in potential)
             {
                 var imdbId = tmdb.GetTvShowAsync(((int)selected.id), TvShowMethods.ExternalIds).Result.ExternalIds.ImdbId;
-                if (!imdbId.Equals(msg.MyId)) continue;
+                if (!imdbId.Equals(msg.MyId))
+                {
+                    continue;
+                }
+
                 var uri = $@"https://api.themoviedb.org/3/tv/{potential[0].id}/season/{sEepNum[0]}/episode/{sEepNum[1]}?api_key={tmdb.ApiKey}";
                 var tvJson = GetJson(uri);
                 //return tvJson.name;
@@ -292,7 +345,6 @@ namespace VideoRenamer
             return group;
         }
 
-
         private static string GetFormat(string tmpFile)
         {
             var format = SearchMatch(tmpFile, Matches.FormatRegex.ToString());
@@ -318,7 +370,6 @@ namespace VideoRenamer
             return tmpFile.StartsWith(".") ? @"." : "";
         }
 
-
         private static object[] GetSeEp(string tmpFile)
         {
             foreach (var match in Matches.seEp_dic)
@@ -335,9 +386,9 @@ namespace VideoRenamer
                                 var sEep = epRegex.Value;
                                 var sEepSize = sEep.Length;
                                 if (sEepSize != 0)
+                                {
                                     return new object[] { sEep.ToUpper() + ".", 7 };
-
-
+                                }
                             }
                             break;
 
@@ -355,8 +406,10 @@ namespace VideoRenamer
                                 ep = ep.Replace("x", "");
                                 ep = epSize > 0 && ep.Length < 2 ? "E0" + ep : "E" + ep;
                                 if (se.Length > 0 && ep.Length > 0)
+                                {
                                     //return se + ep + ".";
                                     return new object[] { se + ep + ".", sRegex.Value.Length + _epRegex.Value.Length };
+                                }
                             }
                             break;
 
@@ -370,14 +423,19 @@ namespace VideoRenamer
                                 //if (filename.EndsWith(".")) filename = filename.Substring(0, filename.Length - 1);
                                 //tmpFile = tmpFile.Substring(filename.Length + 1);
                                 var sRegex = Regex.Match(tmpFile, s3Pattern);
-                                if (!sRegex.Success) sRegex = Regex.Match(tmpFile, s4Pattern);
+                                if (!sRegex.Success)
+                                {
+                                    sRegex = Regex.Match(tmpFile, s4Pattern);
+                                }
+
                                 var sEep = sRegex.Value.ToLower();
                                 var sEepSize = sEep.Length;
                                 if (sEepSize != 0)
+                                {
                                     return sEepSize > 3
                                         ? new object[] { "S" + sEep.Substring(0, 2) + "E" + sEep.Substring(2) + ".", 5 }
                                         : new object[] { "S0" + sEep.Substring(0, 1) + "E" + sEep.Substring(1) + ".", 4 };
-
+                                }
                             }
                             break;
 
@@ -386,13 +444,19 @@ namespace VideoRenamer
                                 const string m4Pattern = @"\b\d{5,10}\b";
                                 var tmpRegex = new Regex(@"\b\d{5,10}\b.*");
                                 var filename = tmpRegex.Replace(tmpFile, string.Empty);
-                                if (filename.EndsWith(".")) filename = filename.Substring(0, filename.Length - 1);
+                                if (filename.EndsWith("."))
+                                {
+                                    filename = filename.Substring(0, filename.Length - 1);
+                                }
+
                                 tmpFile = tmpFile.Substring(filename.Length + 1).ToLower();
                                 var sRegex = Regex.Match(tmpFile, m4Pattern);
                                 var sEep = sRegex.Value.ToLower();
                                 var sEepSize = sEep.Length;
                                 if (sEepSize != 0)
+                                {
                                     return new object[] { "S0" + sEep.Substring(0, 1) + "E" + sEep.Substring(1) + ".", 3 };
+                                }
                             }
                             break;
                         default:
@@ -419,7 +483,10 @@ namespace VideoRenamer
             //var title = year.Length > 0 ? tmpFile.Replace(year, string.Empty) : tmpFile;
             foreach (var match in Matches.seEp_dic)
             {
-                if (!match.Value.IsMatch(tmpFile)) continue;
+                if (!match.Value.IsMatch(tmpFile))
+                {
+                    continue;
+                }
                 //title = match.Value.Replace(title, string.Empty);
                 //return title.Contains("..") ? title.Substring(0,title.Length - 1) : title;
                 return match.Value.Replace(tmpFile, string.Empty);
@@ -430,34 +497,77 @@ namespace VideoRenamer
 
         private void ProcessName(string name)
         {
-
-            var i = listView.Items.Count;
+            var i = _items.Count;
             var original = Path.GetFileName(name);
             var directoryName = Path.GetDirectoryName(name);
-            var index = ++i;
-            if (name == null) return;
-            if (listView.FindItemWithText(Path.GetFileName(name)) == null)
+            var row = ++i;
+            if (name == null)
             {
-                var newName = ProcessNewName(name);
-                listView.ItemChecked -= listView_ItemChecked;
-                listView.Items.Add(new ListViewItem(new[] { "", index.ToString(), original, newName, directoryName }));
-                listView.ItemChecked += listView_ItemChecked;
-                if (!listView.Items[index - 1].SubItems[2].Text.Equals(listView.Items[index - 1].SubItems[3].Text))
+                return;
+            }
+
+            var result = _items.Find(x => x.OldName.Contains(name));
+            if (result == null)
+            {
+                var processNewName = ProcessNewName(name);
+                olv1.ItemChecked -= olv1_ItemChecked;
+                _items.Add(new VideoItem { Index = row, OldName = original, OutputName = processNewName, Dir = directoryName });
+                olv1.ClearObjects();
+                olv1.AddObjects(_items);
+                olv1.ItemChecked += olv1_ItemChecked;
+                if (!_items[row - 1].OldName.Equals(_items[row - 1].OutputName))
                 {
-                    listView.Items[index - 1].Checked = true;
-                    listView.Items[index - 1].UseItemStyleForSubItems = false;
-                    listView.Items[index - 1].SubItems[3].ForeColor = Color.Red;
+                    olv1.CheckObject(_items[row - 1]);
+                    olv1.UseCellFormatEvents = true;
+                    olv1.FormatCell += (sender, args) =>
+                    {
+                        if (args.ColumnIndex == outputName.Index && args.RowIndex == row - 1)
+                        {
+                            args.SubItem.ForeColor = Color.Red;
+                        }
+                    };
+
                 }
                 else
                 {
-                    listView.Items[index - 1].SubItems[3].Text = "";
+                    _items[row - 1].OutputName = "";
                 }
+                olv1.RefreshObject(_items);
+                olv1.BuildList(true);
             }
-            //listView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
-            //listView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.HeaderSize);
-            //listView.AutoResizeColumn(2, ColumnHeaderAutoResizeStyle.HeaderSize);
-            //listView.AutoResizeColumn(3, ColumnHeaderAutoResizeStyle.HeaderSize);
+
         }
+
+        //private void ProcessName_old(string name)
+        //{
+
+        //    var i = listView.Items.Count;
+        //    var original = Path.GetFileName(name);
+        //    var directoryName = Path.GetDirectoryName(name);
+        //    var index = ++i;
+        //    if (name == null) return;
+        //    if (listView.FindItemWithText(Path.GetFileName(name)) == null)
+        //    {
+        //        var newName = ProcessNewName(name);
+        //        listView.ItemChecked -= listView_ItemChecked;
+        //        listView.Items.Add(new ListViewItem(new[] { "", index.ToString(), original, newName, directoryName }));
+        //        listView.ItemChecked += listView_ItemChecked;
+        //        if (!listView.Items[index - 1].SubItems[2].Text.Equals(listView.Items[index - 1].SubItems[3].Text))
+        //        {
+        //            listView.Items[index - 1].Checked = true;
+        //            listView.Items[index - 1].UseItemStyleForSubItems = false;
+        //            listView.Items[index - 1].SubItems[3].ForeColor = Color.Red;
+        //        }
+        //        else
+        //        {
+        //            listView.Items[index - 1].SubItems[3].Text = "";
+        //        }
+        //    }
+        //    //listView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+        //    //listView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.HeaderSize);
+        //    //listView.AutoResizeColumn(2, ColumnHeaderAutoResizeStyle.HeaderSize);
+        //    //listView.AutoResizeColumn(3, ColumnHeaderAutoResizeStyle.HeaderSize);
+        //}
 
         private void exitToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -474,97 +584,63 @@ namespace VideoRenamer
             CheckForUpdates.RunWorkerAsync(false);
         }
 
-        private void All_checkBox_CheckedChanged(object sender, EventArgs e)
-        {
-            listView.ItemChecked -= listView_ItemChecked;
-            if (All_checkBox.Checked)
-            {
-                for (var i = 0; i < listView.Items.Count; i++)
-                {
-                    listView.Items[i].Checked = true;
-                    //listView.Items[i].SubItems[3].Text = ProcessNewName(listView.Items[i].SubItems[2].Text);
-                    listView.Items[i].SubItems[3].Text = _matches[listView.Items[i].SubItems[2].Text];
-                    if (!listView.Items[i].SubItems[2].Text.Equals(listView.Items[i].SubItems[3].Text))
-                    {
-                        listView.Items[i].UseItemStyleForSubItems = false;
-                        listView.Items[i].SubItems[3].ForeColor = Color.Red;
-                    }
-                    else
-                    {
-                        listView.Items[i].UseItemStyleForSubItems = false;
-                        listView.Items[i].SubItems[3].ForeColor = Color.Black;
-                    }
-                }
-            }
-            else
-            {
-                for (var i = 0; i < listView.Items.Count; i++)
-                {
-                    listView.Items[i].Checked = false;
-                    listView.Items[i].SubItems[3].Text = "";
-                }
-            }
-
-            listView.ItemChecked += listView_ItemChecked;
-        }
-
         private void Rename_button_Click(object sender, EventArgs e)
         {
-            //_load = true;
             _list.Clear();
             var errors = @"";
-            foreach (ListViewItem item in listView.Items)
+            foreach (OLVListItem item in olv1.CheckedItems)
             {
-                if (item.Checked)
-                {
-                    var original = item.SubItems[4].Text + "\\" + item.SubItems[2].Text;
-                    var newName = item.SubItems[4].Text + "\\" + item.SubItems[3].Text;
-                    ReName(original, newName);
-                    item.SubItems[2].Text = item.SubItems[3].Text;
-                    item.SubItems[3].Text = "";
-                    item.Checked = false;
-                }
+                var original = $@"{_items[item.Index].Dir}\{_items[item.Index].OldName}";
+                var newName = $@"{_items[item.Index].Dir}\{_items[item.Index].OutputName}";
+                ReName(original, newName);
+                _items[item.Index].PlaceHolder = _items[item.Index].OldName;
+                _items[item.Index].OldName = _items[item.Index].OutputName;
+                _items[item.Index].OutputName = "";
+                item.CheckState = CheckState.Unchecked;
             }
-            All_checkBox.Checked = false;
+            olv1.RefreshObject(_items);
+            olv1.BuildList(true);
+            olv1.UncheckHeaderCheckBox(checkBox);
             if (_list.Count > 0)
             {
                 errors = _list.Aggregate(errors, (current, err) => current + err + Environment.NewLine);
                 MessageBox.Show(@"Done But with Errors." + Environment.NewLine + @"The Following Couldn't Be Renamed:" + Environment.NewLine + errors, @"Done");
             }
 
-            else MessageBox.Show(@"Done.", @"Done");
-        }
-
-
-        private void listView_ItemChecked(object sender, ItemCheckedEventArgs e)
-        {
-            //if (listView.FocusedItem != null)
-            //{
-            foreach (ListViewItem item in listView.Items)
+            else
             {
-                if (item.Checked)
-                {
-                    //item.SubItems[3].Text = ProcessNewName(item.SubItems[2].Text);
-                    item.SubItems[3].Text = _matches[item.SubItems[2].Text];
-                    if (!item.SubItems[2].Text.Equals(item.SubItems[3].Text))
-                    {
-                        item.UseItemStyleForSubItems = false;
-                        item.SubItems[3].ForeColor = Color.Red;
-                    }
-                    else
-                    {
-                        item.UseItemStyleForSubItems = false;
-                        item.SubItems[3].ForeColor = Color.Black;
-                    }
-                }
-
-                else
-                {
-                    item.SubItems[3].Text = "";
-                }
+                MessageBox.Show(@"Done.", @"Done");
             }
-            //}
         }
+        //private void Rename_button_Click(object sender, EventArgs e)
+        //{
+        //    //_load = true;
+        //    _list.Clear();
+        //    var errors = @"";
+        //    foreach (ListViewItem item in listView.Items)
+        //    {
+        //        if (item.Checked)
+        //        {
+        //            var original = item.SubItems[4].Text + "\\" + item.SubItems[2].Text;
+        //            var newName = item.SubItems[4].Text + "\\" + item.SubItems[3].Text;
+        //            ReName(original, newName);
+        //            item.SubItems[2].Text = item.SubItems[3].Text;
+        //            item.SubItems[3].Text = "";
+        //            item.Checked = false;
+        //        }
+        //    }
+        //    All_checkBox.Checked = false;
+        //    if (_list.Count > 0)
+        //    {
+        //        errors = _list.Aggregate(errors, (current, err) => current + err + Environment.NewLine);
+        //        MessageBox.Show(@"Done But with Errors." + Environment.NewLine + @"The Following Couldn't Be Renamed:" + Environment.NewLine + errors, @"Done");
+        //    }
+
+        //    else MessageBox.Show(@"Done.", @"Done");
+        //}
+
+
+
 
 
         private void CheckForUpdates_DoWork(object sender, System.ComponentModel.DoWorkEventArgs e)
@@ -583,9 +659,17 @@ namespace VideoRenamer
                 foreach (var dm in doc.Descendants(appName))
                 {
                     var versionElement = dm.Element(@"version");
-                    if (versionElement == null) continue;
+                    if (versionElement == null)
+                    {
+                        continue;
+                    }
+
                     var urlelEment = dm.Element(@"url");
-                    if (urlelEment == null) continue;
+                    if (urlelEment == null)
+                    {
+                        continue;
+                    }
+
                     newVersion = new Version(versionElement.Value);
                     downloadUrl = urlelEment.Value;
                     change = dm.Element(@"change_log");
@@ -599,103 +683,272 @@ namespace VideoRenamer
 
             if (appVersion.CompareTo(newVersion) < 0)
             {
-                if (change == null) return;
+                if (change == null)
+                {
+                    return;
+                }
+
                 change.Value = change.Value;
                 var result = MessageBox.Show(
                     $@"{appName.Replace('_', ' ')} v.{newVersion} is out!{Environment.NewLine}{change.Value}",
                     @"New Version is available", MessageBoxButtons.YesNo);
                 if (result == DialogResult.Yes)
+                {
                     System.Diagnostics.Process.Start(downloadUrl);
+                }
             }
             else
             {
                 if (!(bool)e.Argument)
+                {
                     MessageBox.Show(@"You Are Running The Last Version.", @"No New Updates");
+                }
             }
         }
 
-        private void listView_ColumnClick(object sender, ColumnClickEventArgs e)
+        //private void listView_ColumnClick(object sender, ColumnClickEventArgs e)
+        //{
+        //    if (e.Column == 1) return;
+        //    // Determine if clicked column is already the column that is being sorted.
+        //    if (e.Column == lvwColumnSorter.SortColumn)
+        //    {
+        //        // Reverse the current sort direction for this column.
+        //        if (lvwColumnSorter.Order == SortOrder.Ascending)
+        //        {
+        //            lvwColumnSorter.Order = SortOrder.Descending;
+        //        }
+        //        else
+        //        {
+        //            lvwColumnSorter.Order = SortOrder.Ascending;
+        //        }
+        //    }
+        //    else
+        //    {
+        //        // Set the column number that is to be sorted; default to ascending.
+        //        lvwColumnSorter.SortColumn = e.Column;
+        //        lvwColumnSorter.Order = SortOrder.Ascending;
+        //    }
+
+        //    // Perform the sort with these new sort options.
+        //    this.listView.Sort();
+        //    var i = 1;
+        //    foreach (ListViewItem item in listView.Items)
+        //        item.SubItems[1].Text = i++.ToString();
+        //    //for(int i=0; i < listView.Items[1].SubItems.Count;i++)
+        //    //{
+        //    //    listView.Items[i].SubItems[1].Text = (++i).ToString();
+        //    //}
+        //}
+
+        //private void listView_ColumnWidthChanging(object sender, ColumnWidthChangingEventArgs e)
+        //{
+        //    if (e.ColumnIndex != 1 && e.ColumnIndex != 0) return;
+        //    e.Cancel = true;
+        //    e.NewWidth = listView.Columns[e.ColumnIndex].Width;
+        //}
+
+
+        //private void listView_KeyDown(object sender, KeyEventArgs e)
+        //{
+        //    if (e.KeyCode == Keys.Delete)
+        //    {
+        //        foreach (ListViewItem eachItem in listView.SelectedItems)
+        //        {
+        //            listView.Items.Remove(eachItem);
+        //            _matches.Remove(eachItem.SubItems[2].Text);
+        //        }
+
+        //        var i = 1;
+        //        foreach (ListViewItem item in listView.Items)
+        //            item.SubItems[1].Text = i++.ToString();
+        //    }
+
+        //    else if (e.Control && e.KeyCode == Keys.A)
+        //        foreach (ListViewItem eachItem in listView.Items)
+        //            eachItem.Selected = true;
+
+        //}
+
+        //private void listView_MouseDoubleClick(object sender, MouseEventArgs e)
+        //{
+        //    try
+        //    {
+        //        var item = listView.HitTest(e.X, e.Y);
+        //        if (item.Item != null)
+        //        {
+
+
+        //        }
+
+
+
+        //    }
+        //    catch
+        //    {
+        //        //
+        //    }
+
+        //}
+
+        private void olv1_ItemChecked(object sender, ItemCheckedEventArgs e)
         {
-            if (e.Column == 1) return;
-            // Determine if clicked column is already the column that is being sorted.
-            if (e.Column == lvwColumnSorter.SortColumn)
+            if (!e.Item.Checked)
             {
-                // Reverse the current sort direction for this column.
-                if (lvwColumnSorter.Order == SortOrder.Ascending)
-                {
-                    lvwColumnSorter.Order = SortOrder.Descending;
-                }
-                else
-                {
-                    lvwColumnSorter.Order = SortOrder.Ascending;
-                }
+                _items[e.Item.Index].OutputName = "";
             }
             else
             {
-                // Set the column number that is to be sorted; default to ascending.
-                lvwColumnSorter.SortColumn = e.Column;
-                lvwColumnSorter.Order = SortOrder.Ascending;
+
+                //item.NewName = _matches[item.OldName];
+                var key = _items[e.Item.Index].OldName;
+                _items[e.Item.Index].OutputName = _matches[key];
+                if (!_items[e.Item.Index].OldName.Equals(_items[e.Item.Index].OutputName))
+                {
+                    olv1.FormatCell += (obj, args) =>
+                    {
+                        if (args.ColumnIndex == outputName.Index && args.RowIndex == e.Item.Index - 1)
+                        {
+                            args.SubItem.ForeColor = Color.Red;
+                        }
+                    };
+                }
+                else
+                {
+                    _items[e.Item.Index].OutputName = "";
+                    olv1.UncheckObject(_items[e.Item.Index]);
+                    //olv1.FormatCell += (obj, args) =>
+                    //{
+                    //    if (args.ColumnIndex == outputName.Index && args.RowIndex == e.Item.Index - 1)
+                    //    {
+                    //        args.SubItem.ForeColor = Color.Black;
+                    //    }
+                    //};
+                }
             }
 
-            // Perform the sort with these new sort options.
-            this.listView.Sort();
-            var i = 1;
-            foreach (ListViewItem item in listView.Items)
-                item.SubItems[1].Text = i++.ToString();
-            //for(int i=0; i < listView.Items[1].SubItems.Count;i++)
-            //{
-            //    listView.Items[i].SubItems[1].Text = (++i).ToString();
-            //}
-        }
-
-        private void listView_ColumnWidthChanging(object sender, ColumnWidthChangingEventArgs e)
-        {
-            if (e.ColumnIndex != 1 && e.ColumnIndex != 0) return;
-            e.Cancel = true;
-            e.NewWidth = listView.Columns[e.ColumnIndex].Width;
+            olv1.RefreshObject(_items);
+            olv1.BuildList(true);
         }
 
 
-        private void listView_KeyDown(object sender, KeyEventArgs e)
+        //private void listView_ItemChecked(object sender, ItemCheckedEventArgs e)
+        //{
+        //    //if (listView.FocusedItem != null)
+        //    //{
+        //    foreach (ListViewItem item in listView.Items)
+        //    {
+        //        if (item.Checked)
+        //        {
+        //            //item.SubItems[3].Text = ProcessNewName(item.SubItems[2].Text);
+        //            item.SubItems[3].Text = _matches[item.SubItems[2].Text];
+        //            if (!item.SubItems[2].Text.Equals(item.SubItems[3].Text))
+        //            {
+        //                item.UseItemStyleForSubItems = false;
+        //                item.SubItems[3].ForeColor = Color.Red;
+        //            }
+        //            else
+        //            {
+        //                item.UseItemStyleForSubItems = false;
+        //                item.SubItems[3].ForeColor = Color.Black;
+        //            }
+        //        }
+
+        //        else
+        //        {
+        //            item.SubItems[3].Text = "";
+        //        }
+        //    }
+        //    //}
+        //}
+        private void olv1_HeaderCheckBoxChanging(object sender, HeaderCheckBoxChangingEventArgs e)
         {
-            if (e.KeyCode == Keys.Delete)
+            var checkState = olv1.GetColumn(0).HeaderCheckState;
+            olv1.ItemChecked -= olv1_ItemChecked;
+            if (checkState == CheckState.Unchecked)
             {
-                foreach (ListViewItem eachItem in listView.SelectedItems)
+
+                if (olv1.Items.Count < 1)
                 {
-                    listView.Items.Remove(eachItem);
-                    _matches.Remove(eachItem.SubItems[2].Text);
+                    e.NewCheckState = CheckState.Unchecked;
                 }
 
-                var i = 1;
-                foreach (ListViewItem item in listView.Items)
-                    item.SubItems[1].Text = i++.ToString();
-            }
-
-            else if (e.Control && e.KeyCode == Keys.A)
-                foreach (ListViewItem eachItem in listView.Items)
-                    eachItem.Selected = true;
-
-        }
-
-        private void listView_MouseDoubleClick(object sender, MouseEventArgs e)
-        {
-            try
-            {
-                var item = listView.HitTest(e.X, e.Y);
-                if (item.Item != null)
+                foreach (var item in _items)
                 {
-                    
+                    var key = _items[item.Index - 1].PlaceHolder == "" ? _items[item.Index - 1].OldName : _items[item.Index - 1].PlaceHolder;
+                    item.OutputName = _matches[key];
+                    if (!item.OldName.Equals(item.OutputName))
+                    {
+                        olv1.FormatCell += (obj, args) =>
+                        {
+                            if (args.ColumnIndex == outputName.Index && args.RowIndex == item.Index - 1)
+                            {
+                                args.SubItem.ForeColor = Color.Red;
+                            }
+                        };
 
+                    }
+                    else
+                    {
+                        item.OutputName = "";
+                        olv1.UncheckObject(_items[item.Index - 1]);
+                        //olv1.FormatCell += (obj, args) =>
+                        //{
+                        //    if (args.ColumnIndex == outputName.Index && args.RowIndex == item.Index - 1)
+                        //    {
+                        //        args.SubItem.ForeColor = Color.Black;
+                        //    }
+                        //};
+                    }
                 }
-                
-
 
             }
-            catch
+            else
             {
-                //
+                foreach (var item in _items)
+                {
+                    item.OutputName = "";
+                }
             }
-           
+            olv1.RefreshObject(_items);
+            olv1.BuildList(true);
+            olv1.ItemChecked += olv1_ItemChecked;
+
+
         }
+
+        //private void All_checkBox_CheckedChanged(object sender, EventArgs e)
+        //{
+        //    olv1.ItemChecked -= listView_ItemChecked;
+        //    if (All_checkBox.Checked)
+        //    {
+        //        for (var i = 0; i < listView.Items.Count; i++)
+        //        {
+        //            listView.Items[i].Checked = true;
+        //            //listView.Items[i].SubItems[3].Text = ProcessNewName(listView.Items[i].SubItems[2].Text);
+        //            listView.Items[i].SubItems[3].Text = _matches[listView.Items[i].SubItems[2].Text];
+        //            if (!listView.Items[i].SubItems[2].Text.Equals(listView.Items[i].SubItems[3].Text))
+        //            {
+        //                listView.Items[i].UseItemStyleForSubItems = false;
+        //                listView.Items[i].SubItems[3].ForeColor = Color.Red;
+        //            }
+        //            else
+        //            {
+        //                listView.Items[i].UseItemStyleForSubItems = false;
+        //                listView.Items[i].SubItems[3].ForeColor = Color.Black;
+        //            }
+        //        }
+        //    }
+        //    else
+        //    {
+        //        for (var i = 0; i < listView.Items.Count; i++)
+        //        {
+        //            listView.Items[i].Checked = false;
+        //            listView.Items[i].SubItems[3].Text = "";
+        //        }
+        //    }
+
+        //    listView.ItemChecked += listView_ItemChecked;
+        //}
+
     }
 }

@@ -22,6 +22,7 @@ namespace VideoRenamer
         private List<VideoItem> _items = new List<VideoItem>();
         private class VideoItem
         {
+            public bool Checked;
             public string PlaceHolder;
             public int Index;
             public string OldName;
@@ -32,36 +33,7 @@ namespace VideoRenamer
         public VideoRenamer()
         {
             InitializeComponent();
-
         }
-
-
-
-        //private void VideoRenamer_Load(object sender, EventArgs e)
-        //{
-        //    var width = listView.Size.Width - 52;
-        //    listView.View = View.Details;
-        //    listView.FullRowSelect = true;
-        //    listView.Columns.Add("", 24);
-        //    listView.Columns.Add("#", 24);
-        //    listView.Columns.Add("Original Name", width / 2);
-        //    listView.Columns.Add("New Name", width / 2);
-        //    listView.CheckBoxes = true;
-        //    // Ensure that the view is set to show details.
-        //    listView.View = View.Details;
-        //    // Loop through and size each column header to fit the column header text.
-        //    foreach (ColumnHeader ch in this.listView.Columns)
-        //    {
-        //        ch.Width = -2;
-        //    }
-        //}
-
-        //private void SizeLastColumn(ListView listview)
-        //{
-        //    var width = listView.Size.Width - 52;
-        //    listview.Columns[2].Width = width / 2;
-        //    listview.Columns[3].Width = width / 2;
-        //}
 
         private static IEnumerable<string> Filtered_List(IList<string> list)
         {
@@ -95,7 +67,7 @@ namespace VideoRenamer
             var allfiles = Filtered_List(GetFiles(fs.FileName, "*.*"));
             foreach (var name in allfiles)
             {
-                if (!_matches.ContainsKey(Path.GetFileName(name)))
+                if (!_matches.ContainsKey(Path.GetFileName(name) ?? throw new InvalidOperationException()))
                 {
                     ProcessName(name);
                 }
@@ -128,20 +100,13 @@ namespace VideoRenamer
             var fileName = fs.FileNames;
             foreach (var name in fileName)
             {
-                if (!_matches.ContainsKey(Path.GetFileName(name)))
+                if (!_matches.ContainsKey(Path.GetFileName(name) ?? throw new InvalidOperationException()))
                 {
                     ProcessName(name);
                 }
             }
             //_load = false;
         }
-
-        /*
-                private static bool TestWord(string file, Regex filter)
-                {
-                    return filter.IsMatch(file);
-                }
-        */
 
         private static string SearchMatch(string input, string pattern)
         {
@@ -175,17 +140,18 @@ namespace VideoRenamer
             return files;
         }
 
-        private void ReName(string original, string output)
+        private bool ReName(string original, string output)
         {
             try
             {
                 File.Move(original, output);
+                return false;
 
             }
             catch (Exception)
             {
                 _list.Add(original);
-
+                return true;
             }
 
             //return _list;
@@ -292,9 +258,9 @@ namespace VideoRenamer
                 var tvJson = GetJson(uri);
                 var delimitersStrings = new[] { "-", "_", "+" };
 
-                var CleanName = ((string)tvJson.name).TrimEnd('.');
+                var cleanName = ((string)tvJson.name).TrimEnd('.');
                 var isDelimiter = delimitersStrings.Any(delimit => ((string)tvJson.name).Contains(delimit));
-                return isDelimiter ? CleanName.Replace(" ", string.Empty) + "." : CleanName.Replace(" ", ".") + ".";
+                return isDelimiter ? cleanName.Replace(" ", string.Empty) + "." : cleanName.Replace(" ", ".") + ".";
 
             }
 
@@ -324,10 +290,10 @@ namespace VideoRenamer
                 var uri = $@"https://api.themoviedb.org/3/tv/{potential[0].id}/season/{sEepNum[0]}/episode/{sEepNum[1]}?api_key={tmdb.ApiKey}";
                 var tvJson = GetJson(uri);
                 var delimitersStrings = new[] { "-", "_", "+" };
-                var CleanName = ((string)tvJson.name).TrimEnd('.');
+                var cleanName = ((string)tvJson.name).TrimEnd('.');
                 var isDelimiter = delimitersStrings.Any(delimit => ((string)tvJson.name).Contains(delimit));
                 _mark.Add((string)selected.first_air_date, (string)selected.original_name);
-                return isDelimiter ? CleanName.Replace(" ", string.Empty) + "." : CleanName.Replace(" ", ".") + ".";
+                return isDelimiter ? cleanName.Replace(" ", string.Empty) + "." : cleanName.Replace(" ", ".") + ".";
             }
 
             return "";
@@ -421,10 +387,6 @@ namespace VideoRenamer
                             {
                                 const string s3Pattern = @"\b\d{3}\b";
                                 const string s4Pattern = @"\b\d{4}\b";
-                                //var tmpRegex = new Regex(@"([0-9]{1,2}[0-9]{1,2}).*");
-                                //var filename = tmpRegex.Replace(tmpFile, string.Empty);
-                                //if (filename.EndsWith(".")) filename = filename.Substring(0, filename.Length - 1);
-                                //tmpFile = tmpFile.Substring(filename.Length + 1);
                                 var sRegex = Regex.Match(tmpFile, s3Pattern);
                                 if (!sRegex.Success)
                                 {
@@ -495,7 +457,6 @@ namespace VideoRenamer
 
             }
             return Regex.Replace(tmp, $"{Matches.YRegex}.*", string.Empty);
-            //return Regex.Replace(tmpFile, $"{Matches.YRegex}.*", string.Empty);
         }
 
         private void ProcessName(string name)
@@ -510,35 +471,40 @@ namespace VideoRenamer
             }
 
             var result = _items.Find(x => x.OldName.Contains(name));
-            if (result == null)
+            if (result != null)
             {
-                var processNewName = ProcessNewName(name);
-                olv1.ItemChecked -= olv1_ItemChecked;
-                _items.Add(new VideoItem { Index = row, OldName = original, OutputName = processNewName, Dir = directoryName });
-                olv1.ClearObjects();
-                olv1.AddObjects(_items);
-                olv1.AutoResizeColumns();
-                olv1.ItemChecked += olv1_ItemChecked;
-                if (!_items[row - 1].OldName.Equals(_items[row - 1].OutputName))
-                {
-                    olv1.CheckObject(_items[row - 1]);
-                    olv1.UseCellFormatEvents = true;
-                    olv1.FormatCell += (sender, args) =>
-                    {
-                        if (args.ColumnIndex == outputName.Index && args.RowIndex == row - 1)
-                        {
-                            args.SubItem.ForeColor = Color.Red;
-                        }
-                    };
-
-                }
-                else
-                {
-                    _items[row - 1].OutputName = "";
-                }
-                olv1.RefreshObject(_items);
-                olv1.BuildList(true);
+                return;
             }
+
+            var processNewName = ProcessNewName(name);
+            olv1.ItemChecked -= olv1_ItemChecked;
+            //_items[row - 1].PlaceHolder = original;
+            _items.Add(new VideoItem { Index = row, OldName = original, OutputName = processNewName, Dir = directoryName });
+            _items[row - 1].PlaceHolder = original;
+            olv1.ClearObjects();
+            olv1.AddObjects(_items);
+            olv1.AutoResizeColumns();
+            olv1.ItemChecked += olv1_ItemChecked;
+            if (!_items[row - 1].OldName.Equals(_items[row - 1].OutputName))
+            {
+                _items[row - 1].Checked = true;
+                olv1.CheckObject(_items[row - 1]);
+                olv1.UseCellFormatEvents = true;
+                olv1.FormatCell += (sender, args) =>
+                {
+                    if (args.ColumnIndex == outputName.Index && args.RowIndex == row - 1)
+                    {
+                        args.SubItem.ForeColor = Color.Red;
+                    }
+                };
+
+            }
+            else
+            {
+                _items[row - 1].OutputName = "";
+            }
+            olv1.RefreshObject(_items);
+            olv1.BuildList(true);
 
         }
 
@@ -565,11 +531,15 @@ namespace VideoRenamer
             {
                 var original = $@"{_items[item.Index].Dir}\{_items[item.Index].OldName}";
                 var newName = $@"{_items[item.Index].Dir}\{_items[item.Index].OutputName}";
-                ReName(original, newName);
-                _items[item.Index].PlaceHolder = _items[item.Index].OldName;
+                var err = ReName(original, newName);
+
+                if (err)
+                {
+                    continue;
+                }
+
                 _items[item.Index].OldName = _items[item.Index].OutputName;
                 _items[item.Index].OutputName = "";
-                item.CheckState = CheckState.Unchecked;
             }
             olv1.RefreshObject(_items);
             olv1.BuildList(true);
@@ -585,7 +555,6 @@ namespace VideoRenamer
                 MessageBox.Show(@"Done.", @"Done");
             }
         }
-
 
         private void CheckForUpdates_DoWork(object sender, System.ComponentModel.DoWorkEventArgs e)
         {
@@ -650,17 +619,18 @@ namespace VideoRenamer
             }
         }
 
-
         private void olv1_ItemChecked(object sender, ItemCheckedEventArgs e)
         {
+
             if (!e.Item.Checked)
             {
                 _items[e.Item.Index].OutputName = "";
+                _items[e.Item.Index].Checked = false;
             }
             else
             {
 
-                var key = _items[e.Item.Index].OldName;
+                var key = _items[e.Item.Index].PlaceHolder;
                 _items[e.Item.Index].OutputName = _matches[key];
                 if (!_items[e.Item.Index].OldName.Equals(_items[e.Item.Index].OutputName))
                 {
@@ -674,8 +644,11 @@ namespace VideoRenamer
                 }
                 else
                 {
+                    olv1.ItemChecked -= olv1_ItemChecked;
                     _items[e.Item.Index].OutputName = "";
                     olv1.UncheckObject(_items[e.Item.Index]);
+                    _items[e.Item.Index].Checked = false;
+                    olv1.ItemChecked += olv1_ItemChecked;
                 }
             }
 
@@ -683,10 +656,9 @@ namespace VideoRenamer
             olv1.BuildList(true);
         }
 
-
-
         private void olv1_HeaderCheckBoxChanging(object sender, HeaderCheckBoxChangingEventArgs e)
         {
+            olv1.UseCellFormatEvents = true;
             var checkState = olv1.GetColumn(0).HeaderCheckState;
             olv1.ItemChecked -= olv1_ItemChecked;
             if (checkState == CheckState.Unchecked)
@@ -699,9 +671,9 @@ namespace VideoRenamer
 
                 foreach (var item in _items)
                 {
-                    var key = _items[item.Index].PlaceHolder == "" ? _items[item.Index].OldName : _items[item.Index].PlaceHolder;
+                    var key = _items[item.Index - 1].PlaceHolder;
                     item.OutputName = _matches[key];
-                    if (!item.OldName.Equals(item.OutputName))
+                    if (!item.OldName.Equals(item.OutputName) && item.Checked)
                     {
                         olv1.FormatCell += (obj, args) =>
                         {
@@ -716,13 +688,7 @@ namespace VideoRenamer
                     {
                         item.OutputName = "";
                         olv1.UncheckObject(_items[item.Index - 1]);
-                        //olv1.FormatCell += (obj, args) =>
-                        //{
-                        //    if (args.ColumnIndex == outputName.Index && args.RowIndex == item.Index - 1)
-                        //    {
-                        //        args.SubItem.ForeColor = Color.Black;
-                        //    }
-                        //};
+                        _items[item.Index - 1].Checked = false;
                     }
                 }
 
@@ -743,45 +709,25 @@ namespace VideoRenamer
 
         private void olv1_CellEditFinished(object sender, CellEditEventArgs e)
         {
-            _items[e.SubItemIndex].OldName = _items[e.SubItemIndex].OutputName;
+            var ind = e.ListViewItem.Index;
+            _matches[_items[ind].OldName] = _items[ind].OutputName;
+            olv1.UseCellFormatEvents = true;
+            _items[e.ListViewItem.Index].Checked = true;
+            olv1.ItemChecked -= olv1_ItemChecked;
+            olv1.CheckObject(_items[ind]);
+            olv1.ItemChecked += olv1_ItemChecked;
+            olv1.UseCellFormatEvents = true;
+            olv1.FormatCell += (obj, args) =>
+            {
+                if (args.ColumnIndex == outputName.Index && args.RowIndex == ind)
+                {
+                    args.SubItem.ForeColor = Color.Red;
+                }
+            };
+
             olv1.RefreshObject(_items);
             olv1.BuildList(true);
 
         }
-
-        //private void All_checkBox_CheckedChanged(object sender, EventArgs e)
-        //{
-        //    olv1.ItemChecked -= listView_ItemChecked;
-        //    if (All_checkBox.Checked)
-        //    {
-        //        for (var i = 0; i < listView.Items.Count; i++)
-        //        {
-        //            listView.Items[i].Checked = true;
-        //            //listView.Items[i].SubItems[3].Text = ProcessNewName(listView.Items[i].SubItems[2].Text);
-        //            listView.Items[i].SubItems[3].Text = _matches[listView.Items[i].SubItems[2].Text];
-        //            if (!listView.Items[i].SubItems[2].Text.Equals(listView.Items[i].SubItems[3].Text))
-        //            {
-        //                listView.Items[i].UseItemStyleForSubItems = false;
-        //                listView.Items[i].SubItems[3].ForeColor = Color.Red;
-        //            }
-        //            else
-        //            {
-        //                listView.Items[i].UseItemStyleForSubItems = false;
-        //                listView.Items[i].SubItems[3].ForeColor = Color.Black;
-        //            }
-        //        }
-        //    }
-        //    else
-        //    {
-        //        for (var i = 0; i < listView.Items.Count; i++)
-        //        {
-        //            listView.Items[i].Checked = false;
-        //            listView.Items[i].SubItems[3].Text = "";
-        //        }
-        //    }
-
-        //    listView.ItemChecked += listView_ItemChecked;
-        //}
-
     }
 }

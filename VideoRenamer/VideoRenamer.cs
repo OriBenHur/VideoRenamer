@@ -68,8 +68,8 @@ namespace VideoRenamer
             return (from name in list let extension = Path.GetExtension(name) where extension != null let ext = extension.ToLower() where ext.Equals(".mp4") || ext.Equals(".avi") || ext.Equals(".mkv") || ext.Equals(".srt") select name).ToList();
         }
 
-        private static Dictionary<string, string> _matches = new Dictionary<string, string>();
-        private static Dictionary<string, string> _mark = new Dictionary<string, string>();
+        private static Dictionary<string, string> _matches = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private static Dictionary<string, string> _mark = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private readonly List<string> _list = new List<string>();
 
         //private bool _load = true;
@@ -79,6 +79,7 @@ namespace VideoRenamer
             olv1.ClearObjects();
             _matches.Clear();
             _items.Clear();
+            _mark.Clear();
             var fs = new FolderSelectDialog();
             var result = fs.ShowDialog();
             if (!result)
@@ -94,7 +95,10 @@ namespace VideoRenamer
             var allfiles = Filtered_List(GetFiles(fs.FileName, "*.*"));
             foreach (var name in allfiles)
             {
-                ProcessName(name);
+                if (!_matches.ContainsKey(Path.GetFileName(name)))
+                {
+                    ProcessName(name);
+                }
             }
             //All_checkBox.Checked = true;
             //_load = false;
@@ -124,7 +128,10 @@ namespace VideoRenamer
             var fileName = fs.FileNames;
             foreach (var name in fileName)
             {
-                ProcessName(name);
+                if (!_matches.ContainsKey(Path.GetFileName(name)))
+                {
+                    ProcessName(name);
+                }
             }
             //_load = false;
         }
@@ -228,7 +235,7 @@ namespace VideoRenamer
                 newName = newName.Replace("HDTV", "HDTV.x264");
             }
 
-            if (original != null)
+            if (original != null && !_matches.ContainsKey(original))
             {
                 _matches.Add(original, newName);
             }
@@ -250,19 +257,9 @@ namespace VideoRenamer
 
         private string GetEpName(string title, TMDbClient tmdb, string seEp = "", string year = "0")
         {
-            if (_mark.ContainsValue(CultureInfo.CurrentCulture.TextInfo.ToTitleCase(title)))
+            if (_mark.ContainsValue(title))
             {
-                KeyValuePair<string, string> first = new KeyValuePair<string, string>();
-                foreach (var z in _mark)
-                {
-                    if (z.Value.ToLower().Equals(title.ToLower()))
-                    {
-                        first = z;
-                        break;
-                    }
-                }
-
-                var tmpYear = first.Key.Split('-');
+                var tmpYear = _mark.FirstOrDefault(z => z.Value.ToLower().Equals(title.ToLower())).Key.Split('-');
                 year = tmpYear[0];
             }
 
@@ -282,20 +279,26 @@ namespace VideoRenamer
                     potential.Add(result);
                 }
             }
-            if (potential.Count == 1 || AndroidStyleToggleSwitch.Checked)
-            {
-                var uri = $@"https://api.themoviedb.org/3/tv/{potential[0].id}/season/{sEepNum[0]}/episode/{sEepNum[1]}?api_key={tmdb.ApiKey}";
-                var tvJson = GetJson(uri);
-                var delimitersStrings = new[] { "-", "_", "+", "." };
-                var isDelimiter = delimitersStrings.Any(delimit => ((string)tvJson.name).Contains(delimit));
-                return isDelimiter ? ((string)tvJson.name).Replace(" ", string.Empty) + "." : ((string)tvJson.name).Replace(" ", ".") + ".";
-
-            }
 
             if (potential.Count == 0)
             {
                 return "";
             }
+
+
+            if (potential.Count == 1 || AndroidStyleToggleSwitch.Checked)
+            {
+                var uri = $@"https://api.themoviedb.org/3/tv/{potential[0].id}/season/{sEepNum[0]}/episode/{sEepNum[1]}?api_key={tmdb.ApiKey}";
+                var tvJson = GetJson(uri);
+                var delimitersStrings = new[] { "-", "_", "+" };
+
+                var CleanName = ((string)tvJson.name).TrimEnd('.');
+                var isDelimiter = delimitersStrings.Any(delimit => ((string)tvJson.name).Contains(delimit));
+                return isDelimiter ? CleanName.Replace(" ", string.Empty) + "." : CleanName.Replace(" ", ".") + ".";
+
+            }
+
+
 
             var msg = new MsgBox();
             const string imdburl = "http://www.imdb.com/title/";
@@ -320,11 +323,11 @@ namespace VideoRenamer
 
                 var uri = $@"https://api.themoviedb.org/3/tv/{potential[0].id}/season/{sEepNum[0]}/episode/{sEepNum[1]}?api_key={tmdb.ApiKey}";
                 var tvJson = GetJson(uri);
-                //return tvJson.name;
-                var delimitersStrings = new[] { "-", "_", "+", "." };
+                var delimitersStrings = new[] { "-", "_", "+" };
+                var CleanName = ((string)tvJson.name).TrimEnd('.');
                 var isDelimiter = delimitersStrings.Any(delimit => ((string)tvJson.name).Contains(delimit));
                 _mark.Add((string)selected.first_air_date, (string)selected.original_name);
-                return isDelimiter ? ((string)tvJson.name).Replace(" ", string.Empty) + "." : ((string)tvJson.name).Replace(" ", ".") + ".";
+                return isDelimiter ? CleanName.Replace(" ", string.Empty) + "." : CleanName.Replace(" ", ".") + ".";
             }
 
             return "";
@@ -479,20 +482,20 @@ namespace VideoRenamer
 
         private static string GetTitle(string tmpFile)
         {
+            var tmp = tmpFile;
 
-            //var title = year.Length > 0 ? tmpFile.Replace(year, string.Empty) : tmpFile;
             foreach (var match in Matches.seEp_dic)
             {
                 if (!match.Value.IsMatch(tmpFile))
                 {
                     continue;
                 }
-                //title = match.Value.Replace(title, string.Empty);
-                //return title.Contains("..") ? title.Substring(0,title.Length - 1) : title;
-                return match.Value.Replace(tmpFile, string.Empty);
+                tmp = match.Value.Replace(tmpFile, string.Empty);
+                break;
 
             }
-            return Regex.Replace(tmpFile, $"{Matches.YRegex}.*", string.Empty);
+            return Regex.Replace(tmp, $"{Matches.YRegex}.*", string.Empty);
+            //return Regex.Replace(tmpFile, $"{Matches.YRegex}.*", string.Empty);
         }
 
         private void ProcessName(string name)
@@ -514,6 +517,7 @@ namespace VideoRenamer
                 _items.Add(new VideoItem { Index = row, OldName = original, OutputName = processNewName, Dir = directoryName });
                 olv1.ClearObjects();
                 olv1.AddObjects(_items);
+                olv1.AutoResizeColumns();
                 olv1.ItemChecked += olv1_ItemChecked;
                 if (!_items[row - 1].OldName.Equals(_items[row - 1].OutputName))
                 {
@@ -537,37 +541,6 @@ namespace VideoRenamer
             }
 
         }
-
-        //private void ProcessName_old(string name)
-        //{
-
-        //    var i = listView.Items.Count;
-        //    var original = Path.GetFileName(name);
-        //    var directoryName = Path.GetDirectoryName(name);
-        //    var index = ++i;
-        //    if (name == null) return;
-        //    if (listView.FindItemWithText(Path.GetFileName(name)) == null)
-        //    {
-        //        var newName = ProcessNewName(name);
-        //        listView.ItemChecked -= listView_ItemChecked;
-        //        listView.Items.Add(new ListViewItem(new[] { "", index.ToString(), original, newName, directoryName }));
-        //        listView.ItemChecked += listView_ItemChecked;
-        //        if (!listView.Items[index - 1].SubItems[2].Text.Equals(listView.Items[index - 1].SubItems[3].Text))
-        //        {
-        //            listView.Items[index - 1].Checked = true;
-        //            listView.Items[index - 1].UseItemStyleForSubItems = false;
-        //            listView.Items[index - 1].SubItems[3].ForeColor = Color.Red;
-        //        }
-        //        else
-        //        {
-        //            listView.Items[index - 1].SubItems[3].Text = "";
-        //        }
-        //    }
-        //    //listView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
-        //    //listView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.HeaderSize);
-        //    //listView.AutoResizeColumn(2, ColumnHeaderAutoResizeStyle.HeaderSize);
-        //    //listView.AutoResizeColumn(3, ColumnHeaderAutoResizeStyle.HeaderSize);
-        //}
 
         private void exitToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -612,35 +585,6 @@ namespace VideoRenamer
                 MessageBox.Show(@"Done.", @"Done");
             }
         }
-        //private void Rename_button_Click(object sender, EventArgs e)
-        //{
-        //    //_load = true;
-        //    _list.Clear();
-        //    var errors = @"";
-        //    foreach (ListViewItem item in listView.Items)
-        //    {
-        //        if (item.Checked)
-        //        {
-        //            var original = item.SubItems[4].Text + "\\" + item.SubItems[2].Text;
-        //            var newName = item.SubItems[4].Text + "\\" + item.SubItems[3].Text;
-        //            ReName(original, newName);
-        //            item.SubItems[2].Text = item.SubItems[3].Text;
-        //            item.SubItems[3].Text = "";
-        //            item.Checked = false;
-        //        }
-        //    }
-        //    All_checkBox.Checked = false;
-        //    if (_list.Count > 0)
-        //    {
-        //        errors = _list.Aggregate(errors, (current, err) => current + err + Environment.NewLine);
-        //        MessageBox.Show(@"Done But with Errors." + Environment.NewLine + @"The Following Couldn't Be Renamed:" + Environment.NewLine + errors, @"Done");
-        //    }
-
-        //    else MessageBox.Show(@"Done.", @"Done");
-        //}
-
-
-
 
 
         private void CheckForUpdates_DoWork(object sender, System.ComponentModel.DoWorkEventArgs e)
@@ -706,89 +650,6 @@ namespace VideoRenamer
             }
         }
 
-        //private void listView_ColumnClick(object sender, ColumnClickEventArgs e)
-        //{
-        //    if (e.Column == 1) return;
-        //    // Determine if clicked column is already the column that is being sorted.
-        //    if (e.Column == lvwColumnSorter.SortColumn)
-        //    {
-        //        // Reverse the current sort direction for this column.
-        //        if (lvwColumnSorter.Order == SortOrder.Ascending)
-        //        {
-        //            lvwColumnSorter.Order = SortOrder.Descending;
-        //        }
-        //        else
-        //        {
-        //            lvwColumnSorter.Order = SortOrder.Ascending;
-        //        }
-        //    }
-        //    else
-        //    {
-        //        // Set the column number that is to be sorted; default to ascending.
-        //        lvwColumnSorter.SortColumn = e.Column;
-        //        lvwColumnSorter.Order = SortOrder.Ascending;
-        //    }
-
-        //    // Perform the sort with these new sort options.
-        //    this.listView.Sort();
-        //    var i = 1;
-        //    foreach (ListViewItem item in listView.Items)
-        //        item.SubItems[1].Text = i++.ToString();
-        //    //for(int i=0; i < listView.Items[1].SubItems.Count;i++)
-        //    //{
-        //    //    listView.Items[i].SubItems[1].Text = (++i).ToString();
-        //    //}
-        //}
-
-        //private void listView_ColumnWidthChanging(object sender, ColumnWidthChangingEventArgs e)
-        //{
-        //    if (e.ColumnIndex != 1 && e.ColumnIndex != 0) return;
-        //    e.Cancel = true;
-        //    e.NewWidth = listView.Columns[e.ColumnIndex].Width;
-        //}
-
-
-        //private void listView_KeyDown(object sender, KeyEventArgs e)
-        //{
-        //    if (e.KeyCode == Keys.Delete)
-        //    {
-        //        foreach (ListViewItem eachItem in listView.SelectedItems)
-        //        {
-        //            listView.Items.Remove(eachItem);
-        //            _matches.Remove(eachItem.SubItems[2].Text);
-        //        }
-
-        //        var i = 1;
-        //        foreach (ListViewItem item in listView.Items)
-        //            item.SubItems[1].Text = i++.ToString();
-        //    }
-
-        //    else if (e.Control && e.KeyCode == Keys.A)
-        //        foreach (ListViewItem eachItem in listView.Items)
-        //            eachItem.Selected = true;
-
-        //}
-
-        //private void listView_MouseDoubleClick(object sender, MouseEventArgs e)
-        //{
-        //    try
-        //    {
-        //        var item = listView.HitTest(e.X, e.Y);
-        //        if (item.Item != null)
-        //        {
-
-
-        //        }
-
-
-
-        //    }
-        //    catch
-        //    {
-        //        //
-        //    }
-
-        //}
 
         private void olv1_ItemChecked(object sender, ItemCheckedEventArgs e)
         {
@@ -799,14 +660,13 @@ namespace VideoRenamer
             else
             {
 
-                //item.NewName = _matches[item.OldName];
                 var key = _items[e.Item.Index].OldName;
                 _items[e.Item.Index].OutputName = _matches[key];
                 if (!_items[e.Item.Index].OldName.Equals(_items[e.Item.Index].OutputName))
                 {
                     olv1.FormatCell += (obj, args) =>
                     {
-                        if (args.ColumnIndex == outputName.Index && args.RowIndex == e.Item.Index - 1)
+                        if (args.ColumnIndex == outputName.Index && args.RowIndex == e.Item.Index)
                         {
                             args.SubItem.ForeColor = Color.Red;
                         }
@@ -816,13 +676,6 @@ namespace VideoRenamer
                 {
                     _items[e.Item.Index].OutputName = "";
                     olv1.UncheckObject(_items[e.Item.Index]);
-                    //olv1.FormatCell += (obj, args) =>
-                    //{
-                    //    if (args.ColumnIndex == outputName.Index && args.RowIndex == e.Item.Index - 1)
-                    //    {
-                    //        args.SubItem.ForeColor = Color.Black;
-                    //    }
-                    //};
                 }
             }
 
@@ -831,35 +684,7 @@ namespace VideoRenamer
         }
 
 
-        //private void listView_ItemChecked(object sender, ItemCheckedEventArgs e)
-        //{
-        //    //if (listView.FocusedItem != null)
-        //    //{
-        //    foreach (ListViewItem item in listView.Items)
-        //    {
-        //        if (item.Checked)
-        //        {
-        //            //item.SubItems[3].Text = ProcessNewName(item.SubItems[2].Text);
-        //            item.SubItems[3].Text = _matches[item.SubItems[2].Text];
-        //            if (!item.SubItems[2].Text.Equals(item.SubItems[3].Text))
-        //            {
-        //                item.UseItemStyleForSubItems = false;
-        //                item.SubItems[3].ForeColor = Color.Red;
-        //            }
-        //            else
-        //            {
-        //                item.UseItemStyleForSubItems = false;
-        //                item.SubItems[3].ForeColor = Color.Black;
-        //            }
-        //        }
 
-        //        else
-        //        {
-        //            item.SubItems[3].Text = "";
-        //        }
-        //    }
-        //    //}
-        //}
         private void olv1_HeaderCheckBoxChanging(object sender, HeaderCheckBoxChangingEventArgs e)
         {
             var checkState = olv1.GetColumn(0).HeaderCheckState;
@@ -874,7 +699,7 @@ namespace VideoRenamer
 
                 foreach (var item in _items)
                 {
-                    var key = _items[item.Index - 1].PlaceHolder == "" ? _items[item.Index - 1].OldName : _items[item.Index - 1].PlaceHolder;
+                    var key = _items[item.Index].PlaceHolder == "" ? _items[item.Index].OldName : _items[item.Index].PlaceHolder;
                     item.OutputName = _matches[key];
                     if (!item.OldName.Equals(item.OutputName))
                     {
@@ -913,6 +738,14 @@ namespace VideoRenamer
             olv1.BuildList(true);
             olv1.ItemChecked += olv1_ItemChecked;
 
+
+        }
+
+        private void olv1_CellEditFinished(object sender, CellEditEventArgs e)
+        {
+            _items[e.SubItemIndex].OldName = _items[e.SubItemIndex].OutputName;
+            olv1.RefreshObject(_items);
+            olv1.BuildList(true);
 
         }
 

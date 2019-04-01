@@ -41,10 +41,10 @@
             this.AutoMode = new System.Windows.Forms.Label();
             this.AndroidStyleToggleSwitch = new JCS.ToggleSwitch();
             this.olv1 = new BrightIdeasSoftware.ObjectListView();
+            this.checkBox = ((BrightIdeasSoftware.OLVColumn)(new BrightIdeasSoftware.OLVColumn()));
             this.index = ((BrightIdeasSoftware.OLVColumn)(new BrightIdeasSoftware.OLVColumn()));
             this.oldName = ((BrightIdeasSoftware.OLVColumn)(new BrightIdeasSoftware.OLVColumn()));
             this.outputName = ((BrightIdeasSoftware.OLVColumn)(new BrightIdeasSoftware.OLVColumn()));
-            this.checkBox = ((BrightIdeasSoftware.OLVColumn)(new BrightIdeasSoftware.OLVColumn()));
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.olv1)).BeginInit();
             this.SuspendLayout();
@@ -181,8 +181,21 @@
             this.olv1.UseCellFormatEvents = true;
             this.olv1.UseCompatibleStateImageBehavior = false;
             this.olv1.View = System.Windows.Forms.View.Details;
+            this.olv1.CellEditFinished += new BrightIdeasSoftware.CellEditEventHandler(this.olv1_CellEditFinished);
             this.olv1.HeaderCheckBoxChanging += new System.EventHandler<BrightIdeasSoftware.HeaderCheckBoxChangingEventArgs>(this.olv1_HeaderCheckBoxChanging);
             this.olv1.ItemChecked += new System.Windows.Forms.ItemCheckedEventHandler(this.olv1_ItemChecked);
+            // 
+            // checkBox
+            // 
+            this.checkBox.AspectName = "CheckBox";
+            this.checkBox.ButtonSizing = BrightIdeasSoftware.OLVColumn.ButtonSizingMode.CellBounds;
+            this.checkBox.HeaderCheckBox = true;
+            this.checkBox.MaximumWidth = 26;
+            this.checkBox.MinimumWidth = 26;
+            this.checkBox.ShowTextInHeader = false;
+            this.checkBox.Text = "";
+            this.checkBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            this.checkBox.Width = 26;
             // 
             // index
             // 
@@ -197,7 +210,7 @@
             this.index.Text = "#";
             this.index.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             this.index.UseFiltering = false;
-            this.index.Width = 24;
+            this.index.Width = 40;
             // 
             // oldName
             // 
@@ -213,18 +226,6 @@
             this.outputName.Sortable = false;
             this.outputName.Text = "New Name";
             this.outputName.Width = 150;
-            // 
-            // checkBox
-            // 
-            this.checkBox.AspectName = "CheckBox";
-            this.checkBox.ButtonSizing = BrightIdeasSoftware.OLVColumn.ButtonSizingMode.CellBounds;
-            this.checkBox.HeaderCheckBox = true;
-            this.checkBox.MaximumWidth = 26;
-            this.checkBox.MinimumWidth = 26;
-            this.checkBox.ShowTextInHeader = false;
-            this.checkBox.Text = "";
-            this.checkBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-            this.checkBox.Width = 26;
             // 
             // VideoRenamer
             // 
